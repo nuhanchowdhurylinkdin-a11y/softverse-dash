@@ -4,6 +4,7 @@ import '../../../core/common/widgets/gradient_app_bar.dart';
 import '../../../core/utils/constants/colors.dart';
 import '../controller/dashboard_controller.dart';
 import 'dashboard_date_bar.dart';
+import 'store_switcher.dart';
 
 /// The dashboard's app bar, its title and whether the date bar shows
 /// depending on which bottom-nav tab (Sales/Inventory/Settings) is active.
@@ -35,6 +36,7 @@ class DashboardAppBar extends StatelessWidget implements PreferredSizeWidget {
         AppColors.dashboardHeaderGradientStart,
         AppColors.dashboardHeaderGradientEnd,
       ],
+      trailing: StoreSwitcher(controller: controller),
       bottom: _showDateBar ? DashboardDateBar(controller: controller) : null,
     );
   }

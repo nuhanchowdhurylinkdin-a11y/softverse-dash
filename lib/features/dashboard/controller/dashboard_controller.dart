@@ -4,12 +4,22 @@ import '../models/dashboard_category_model.dart';
 import '../models/dashboard_employee_model.dart';
 import '../models/dashboard_item_model.dart';
 import '../models/inventory_product_model.dart';
+import '../models/store_model.dart';
 import '../../../core/utils/constants/colors.dart';
 
 class DashboardController extends GetxController {
   final selectedNavIndex = 0.obs;
 
   final selectedDate = DateTime(DateTime.now().year, 6, 28).obs;
+
+  final stores = const [
+    StoreModel(name: 'Downtown'),
+    StoreModel(name: 'Mall Branch'),
+    StoreModel(name: 'Airport'),
+  ];
+  final selectedStoreIndex = 0.obs;
+
+  StoreModel get selectedStore => stores[selectedStoreIndex.value];
 
   final transactions = 3.obs;
   final transactionsChange = (-70.0).obs;
@@ -183,9 +193,13 @@ class DashboardController extends GetxController {
   void toggleStockNotifications() =>
       stockNotificationsEnabled.value = !stockNotificationsEnabled.value;
 
+  void selectStore(int index) => selectedStoreIndex.value = index;
+
   void goToPreviousDay() =>
       selectedDate.value = selectedDate.value.subtract(const Duration(days: 1));
 
   void goToNextDay() =>
       selectedDate.value = selectedDate.value.add(const Duration(days: 1));
+
+  void selectDate(DateTime date) => selectedDate.value = date;
 }

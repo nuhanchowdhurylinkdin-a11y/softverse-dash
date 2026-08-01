@@ -27,6 +27,7 @@ class SalesSummarySection extends StatelessWidget {
         ),
         SizedBox(height: 16.h),
         Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
             _GaugeStat(

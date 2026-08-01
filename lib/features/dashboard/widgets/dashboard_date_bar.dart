@@ -36,14 +36,17 @@ class DashboardDateBar extends StatelessWidget implements PreferredSizeWidget {
             ),
           ),
           Expanded(
-            child: Center(
-              child: Obx(
-                () => Text(
-                  DateFormat('d MMMM').format(controller.selectedDate.value),
-                  style: getTextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w500,
-                    color: AppColors.dashboardTextDark,
+            child: GestureDetector(
+              onTap: () => _pickDate(context),
+              child: Center(
+                child: Obx(
+                  () => Text(
+                    DateFormat('d MMMM').format(controller.selectedDate.value),
+                    style: getTextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.dashboardTextDark,
+                    ),
                   ),
                 ),
               ),
@@ -60,5 +63,25 @@ class DashboardDateBar extends StatelessWidget implements PreferredSizeWidget {
         ],
       ),
     );
+  }
+
+  Future<void> _pickDate(BuildContext context) async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: controller.selectedDate.value,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2100),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: Theme.of(context).colorScheme.copyWith(
+                  primary: AppColors.dashboardAccentBlue,
+                ),
+          ),
+          child: child!,
+        );
+      },
+    );
+    if (picked != null) controller.selectDate(picked);
   }
 }

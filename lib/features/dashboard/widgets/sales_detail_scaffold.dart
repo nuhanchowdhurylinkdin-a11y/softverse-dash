@@ -11,6 +11,7 @@ import '../controller/dashboard_controller.dart';
 import 'dashboard_bottom_nav.dart';
 import 'dashboard_date_bar.dart';
 import 'sales_summary_footer_card.dart';
+import 'store_switcher.dart';
 
 /// Shared layout for the "sales by X" drill-down screens (item/category/
 /// employee) reached from the dashboard's "See all" links: a gradient app
@@ -44,6 +45,7 @@ class SalesDetailScaffold extends StatelessWidget {
         backgroundColor: Colors.white,
         appBar: GradientAppBar(
           title: appBarTitle,
+          titleLetterSpacing: 0.09,
           gradientColors: const [
             AppColors.dashboardHeaderGradientStart,
             AppColors.dashboardHeaderGradientEnd,
@@ -52,6 +54,7 @@ class SalesDetailScaffold extends StatelessWidget {
             onPressed: Get.back,
             icon: Icon(Icons.arrow_back, color: Colors.white, size: 22.w),
           ),
+          trailing: StoreSwitcher(controller: controller),
           bottom: DashboardDateBar(controller: controller),
         ),
         body: Padding(

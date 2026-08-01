@@ -9,6 +9,7 @@ import '../../controller/dashboard_controller.dart';
 import '../../widgets/dashboard_bottom_nav.dart';
 import '../../widgets/dashboard_date_bar.dart';
 import '../../widgets/sales_summary_breakdown_card.dart';
+import '../../widgets/store_switcher.dart';
 
 class SalesSummaryScreen extends GetView<DashboardController> {
   const SalesSummaryScreen({super.key});
@@ -30,6 +31,7 @@ class SalesSummaryScreen extends GetView<DashboardController> {
             onPressed: Get.back,
             icon: Icon(Icons.arrow_back, color: Colors.white, size: 22.w),
           ),
+          trailing: StoreSwitcher(controller: controller),
           bottom: DashboardDateBar(controller: controller),
         ),
         body: Padding(

@@ -44,7 +44,7 @@ class GradientAppBar extends StatelessWidget implements PreferredSizeWidget {
         ),
       ),
       child: AppBar(
-        centerTitle: true,
+        centerTitle: false,
         automaticallyImplyLeading: false,
         leading: leading,
         backgroundColor: Colors.transparent,
