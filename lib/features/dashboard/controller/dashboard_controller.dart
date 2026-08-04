@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../models/dashboard_category_model.dart';
@@ -11,6 +12,13 @@ class DashboardController extends GetxController {
   final selectedNavIndex = 0.obs;
 
   final selectedDate = DateTime(DateTime.now().year, 6, 28).obs;
+  final selectedPeriodStart = DateTime(DateTime.now().year, 6, 28).obs;
+  final selectedPeriodEnd = DateTime(DateTime.now().year, 6, 28).obs;
+
+  DateTimeRange get selectedPeriod => DateTimeRange(
+    start: selectedPeriodStart.value,
+    end: selectedPeriodEnd.value,
+  );
 
   final stores = const [
     StoreModel(name: 'Downtown'),
@@ -100,7 +108,12 @@ class DashboardController extends GetxController {
     ),
   ];
 
-  final stockFilters = const ['All Category', 'Low Stock', 'Out of Stock', 'Expire date'];
+  final stockFilters = const [
+    'All Category',
+    'Low Stock',
+    'Out of Stock',
+    'Expire date',
+  ];
   final selectedStockFilterIndex = 0.obs;
 
   final categoryTabs = const [
@@ -195,11 +208,38 @@ class DashboardController extends GetxController {
 
   void selectStore(int index) => selectedStoreIndex.value = index;
 
-  void goToPreviousDay() =>
-      selectedDate.value = selectedDate.value.subtract(const Duration(days: 1));
+  void goToPreviousDay() => _shiftSelectedPeriod(isForward: false);
 
-  void goToNextDay() =>
-      selectedDate.value = selectedDate.value.add(const Duration(days: 1));
+  void goToNextDay() => _shiftSelectedPeriod(isForward: true);
 
-  void selectDate(DateTime date) => selectedDate.value = date;
+  void selectDate(DateTime date) {
+    final normalizedDate = _dateOnly(date);
+    selectedDate.value = normalizedDate;
+    selectedPeriodStart.value = normalizedDate;
+    selectedPeriodEnd.value = normalizedDate;
+  }
+
+  void selectPeriod(DateTimeRange period) {
+    final start = _dateOnly(period.start);
+    final end = _dateOnly(period.end);
+    selectedPeriodStart.value = start;
+    selectedPeriodEnd.value = end;
+    selectedDate.value = start;
+  }
+
+  void _shiftSelectedPeriod({required bool isForward}) {
+    final days =
+        selectedPeriodEnd.value.difference(selectedPeriodStart.value).inDays +
+        1;
+    final offset = Duration(days: isForward ? days : -days);
+    selectPeriod(
+      DateTimeRange(
+        start: selectedPeriodStart.value.add(offset),
+        end: selectedPeriodEnd.value.add(offset),
+      ),
+    );
+  }
+
+  DateTime _dateOnly(DateTime date) =>
+      DateTime(date.year, date.month, date.day);
 }

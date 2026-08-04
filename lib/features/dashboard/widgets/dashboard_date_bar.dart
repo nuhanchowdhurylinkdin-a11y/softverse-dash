@@ -7,7 +7,7 @@ import '../../../core/common/styles/global_text_style.dart';
 import '../../../core/utils/constants/colors.dart';
 import '../controller/dashboard_controller.dart';
 
-/// The day navigator row (previous/next arrows + formatted date) shown
+/// The period navigator row (previous/next arrows + formatted period) shown
 /// beneath the gradient app bar on the dashboard and its sales-detail screens.
 class DashboardDateBar extends StatelessWidget implements PreferredSizeWidget {
   final DashboardController controller;
@@ -39,16 +39,21 @@ class DashboardDateBar extends StatelessWidget implements PreferredSizeWidget {
             child: GestureDetector(
               onTap: () => _pickDate(context),
               child: Center(
-                child: Obx(
-                  () => Text(
-                    DateFormat('d MMMM').format(controller.selectedDate.value),
+                child: Obx(() {
+                  final start = controller.selectedPeriodStart.value;
+                  final end = controller.selectedPeriodEnd.value;
+                  return Text(
+                    _formatPeriod(start, end),
                     style: getTextStyle(
-                      fontSize: 18,
+                      fontSize: 16,
                       fontWeight: FontWeight.w500,
                       color: AppColors.dashboardTextDark,
                     ),
-                  ),
-                ),
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  );
+                }),
               ),
             ),
           ),
@@ -66,22 +71,41 @@ class DashboardDateBar extends StatelessWidget implements PreferredSizeWidget {
   }
 
   Future<void> _pickDate(BuildContext context) async {
-    final picked = await showDatePicker(
+    final picked = await showDateRangePicker(
       context: context,
-      initialDate: controller.selectedDate.value,
+      initialDateRange: controller.selectedPeriod,
       firstDate: DateTime(2000),
       lastDate: DateTime(2100),
+      saveText: 'Apply',
+      helpText: 'Select reporting period',
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme: Theme.of(context).colorScheme.copyWith(
-                  primary: AppColors.dashboardAccentBlue,
-                ),
+            colorScheme: Theme.of(
+              context,
+            ).colorScheme.copyWith(primary: AppColors.dashboardAccentBlue),
           ),
           child: child!,
         );
       },
     );
-    if (picked != null) controller.selectDate(picked);
+    if (picked != null) controller.selectPeriod(picked);
+  }
+
+  String _formatPeriod(DateTime start, DateTime end) {
+    final sameDay = DateUtils.isSameDay(start, end);
+    if (sameDay) return DateFormat('d MMMM').format(start);
+
+    final sameMonth = start.year == end.year && start.month == end.month;
+    if (sameMonth) {
+      return '${DateFormat('d').format(start)} - ${DateFormat('d MMMM').format(end)}';
+    }
+
+    final sameYear = start.year == end.year;
+    if (sameYear) {
+      return '${DateFormat('d MMM').format(start)} - ${DateFormat('d MMMM').format(end)}';
+    }
+
+    return '${DateFormat('d MMM yyyy').format(start)} - ${DateFormat('d MMM yyyy').format(end)}';
   }
 }
