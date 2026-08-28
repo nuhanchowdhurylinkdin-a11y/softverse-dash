@@ -13,4 +13,9 @@ class ApiConstants {
   static String get refresh => '$baseUrl/auth/refresh';
   static String get logout => '$baseUrl/auth/logout';
   static String get me => '$baseUrl/auth/me';
+
+  static String get dashboardOverview =>
+      '$baseUrl/business-admin-dashboard/overview';
+  static String get categorySales => '$baseUrl/reports/category-sales';
+  static String get employeeSales => '$baseUrl/reports/employee-sales';
 }

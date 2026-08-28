@@ -72,13 +72,23 @@ class SalesBarChart extends StatelessWidget {
                             alignment: Alignment.bottomCenter,
                             child: LayoutBuilder(
                               builder: (context, constraints) {
+                                if (values.isEmpty) {
+                                  return const SizedBox.shrink();
+                                }
+                                final gap = 4.w;
+                                final totalGap = gap * (values.length - 1);
+                                final barWidth =
+                                    ((constraints.maxWidth - totalGap) /
+                                            values.length)
+                                        .clamp(1.0, 9.w);
                                 return Row(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   crossAxisAlignment: CrossAxisAlignment.end,
                                   children: [
                                     for (int i = 0; i < values.length; i++) ...[
-                                      if (i > 0) SizedBox(width: 4.w),
+                                      if (i > 0) SizedBox(width: gap),
                                       _Bar(
+                                        width: barWidth,
                                         height: constraints.maxHeight *
                                             (values[i] / maxValue).clamp(0, 1),
                                       ),
@@ -118,14 +128,15 @@ class SalesBarChart extends StatelessWidget {
 }
 
 class _Bar extends StatelessWidget {
+  final double width;
   final double height;
 
-  const _Bar({required this.height});
+  const _Bar({required this.width, required this.height});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 9.w,
+      width: width,
       height: height,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.vertical(top: Radius.circular(4.r)),
