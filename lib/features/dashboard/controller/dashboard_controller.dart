@@ -25,9 +25,19 @@ class DashboardController extends GetxController {
 
   final selectedNavIndex = 0.obs;
 
-  final selectedDate = DateTime(DateTime.now().year, 6, 28).obs;
-  final selectedPeriodStart = DateTime(DateTime.now().year, 6, 28).obs;
-  final selectedPeriodEnd = DateTime(DateTime.now().year, 6, 28).obs;
+  final selectedDate = _startOfCurrentMonth().obs;
+  final selectedPeriodStart = _startOfCurrentMonth().obs;
+  final selectedPeriodEnd = _today().obs;
+
+  static DateTime _today() {
+    final now = DateTime.now();
+    return DateTime(now.year, now.month, now.day);
+  }
+
+  static DateTime _startOfCurrentMonth() {
+    final now = DateTime.now();
+    return DateTime(now.year, now.month, 1);
+  }
 
   DateTimeRange get selectedPeriod => DateTimeRange(
     start: selectedPeriodStart.value,
