@@ -18,4 +18,31 @@ class ApiConstants {
       '$baseUrl/business-admin-dashboard/overview';
   static String get categorySales => '$baseUrl/reports/category-sales';
   static String get employeeSales => '$baseUrl/reports/employee-sales';
+
+  static String resolveAssetUrl(String? url) {
+    if (url == null || url.trim().isEmpty) return '';
+    final value = url.trim();
+    final uri = Uri.tryParse(value);
+    if (uri != null && uri.hasScheme) {
+      final uploadPath = _normalizeUploadPath(uri.path);
+      if (uploadPath != null) return '$baseUrl$uploadPath';
+      return value;
+    }
+
+    final uploadPath = _normalizeUploadPath(value);
+    if (uploadPath != null) return '$baseUrl$uploadPath';
+    if (value.startsWith('/')) return '$baseUrl$value';
+    return '$baseUrl/$value';
+  }
+
+  static String? _normalizeUploadPath(String path) {
+    final normalized = path.trim();
+    if (normalized.isEmpty) return null;
+
+    if (normalized.startsWith('/media/uploads/')) return normalized;
+    if (normalized.startsWith('/uploads/')) return '/media$normalized';
+    if (normalized.startsWith('media/uploads/')) return '/$normalized';
+    if (normalized.startsWith('uploads/')) return '/media/$normalized';
+    return null;
+  }
 }
