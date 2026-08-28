@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:get/get.dart';
 import 'package:iconsax_flutter/iconsax_flutter.dart';
 
+import '../../../core/common/styles/global_text_style.dart';
 import '../../../core/utils/constants/colors.dart';
 import '../controller/dashboard_controller.dart';
 import 'inventory_category_tabs.dart';
@@ -29,16 +31,31 @@ class InventoryTabView extends StatelessWidget {
               InventoryCategoryTabs(controller: controller),
               SizedBox(height: 16.h),
               Expanded(
-                child: SingleChildScrollView(
-                  child: Column(
-                    children: [
-                      for (int i = 0; i < controller.inventoryProducts.length; i++) ...[
-                        if (i > 0) SizedBox(height: 8.h),
-                        InventoryProductCard(product: controller.inventoryProducts[i]),
+                child: Obx(() {
+                  final products = controller.filteredInventoryProducts;
+                  if (products.isEmpty) {
+                    return Center(
+                      child: Text(
+                        'No items found',
+                        style: getTextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w400,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    );
+                  }
+                  return SingleChildScrollView(
+                    child: Column(
+                      children: [
+                        for (int i = 0; i < products.length; i++) ...[
+                          if (i > 0) SizedBox(height: 8.h),
+                          InventoryProductCard(product: products[i]),
+                        ],
                       ],
-                    ],
-                  ),
-                ),
+                    ),
+                  );
+                }),
               ),
             ],
           ),
