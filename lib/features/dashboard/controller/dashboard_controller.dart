@@ -6,7 +6,9 @@ import '../models/dashboard_employee_model.dart';
 import '../models/dashboard_item_model.dart';
 import '../models/inventory_product_model.dart';
 import '../models/store_model.dart';
+import '../../../core/services/network_caller.dart';
 import '../../../core/services/storage_service.dart';
+import '../../../core/utils/constants/api_constants.dart';
 import '../../../core/utils/constants/colors.dart';
 import '../../../routes/app_routes.dart';
 
@@ -234,6 +236,13 @@ class DashboardController extends GetxController {
       stockNotificationsEnabled.value = !stockNotificationsEnabled.value;
 
   Future<void> logout() async {
+    final refreshToken = StorageService.refreshToken;
+    if (refreshToken != null) {
+      await NetworkCaller().postRequest(
+        ApiConstants.logout,
+        body: {'refreshToken': refreshToken},
+      );
+    }
     await StorageService.logoutUser();
     Get.offAllNamed(AppRoute.getLoginScreen());
   }

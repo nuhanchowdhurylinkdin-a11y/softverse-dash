@@ -9,6 +9,8 @@ class ApiConstants {
     return url!;
   }
 
-  // Add your API endpoints here
-  // static String get login => '$baseUrl/auth/login';
+  static String get login => '$baseUrl/auth/login';
+  static String get refresh => '$baseUrl/auth/refresh';
+  static String get logout => '$baseUrl/auth/logout';
+  static String get me => '$baseUrl/auth/me';
 }
