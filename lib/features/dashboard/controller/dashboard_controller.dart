@@ -342,7 +342,7 @@ class DashboardController extends GetxController {
             name: row['name']?.toString() ?? '',
             quantity: (row['quantity'] as num?)?.toInt() ?? 0,
             price: (row['sales'] as num?)?.toDouble() ?? 0,
-            imageUrl: row['imageUrl']?.toString() ?? '',
+            imageUrl: ApiConstants.resolveAssetUrl(row['imageUrl']?.toString()),
           );
         })
         .toList();
@@ -391,7 +391,7 @@ class DashboardController extends GetxController {
             name: row['employeeName']?.toString() ?? 'Unknown',
             posLabel: '$receipts sale${receipts == 1 ? '' : 's'}',
             earnings: (row['netSales'] as num?)?.toDouble() ?? 0,
-            avatarUrl: row['avatarUrl']?.toString() ?? '',
+            avatarUrl: ApiConstants.resolveAssetUrl(row['avatarUrl']?.toString()),
           );
         })
         .toList();
