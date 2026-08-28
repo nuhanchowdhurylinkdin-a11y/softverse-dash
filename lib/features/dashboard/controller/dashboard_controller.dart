@@ -10,9 +10,19 @@ import '../../../core/services/network_caller.dart';
 import '../../../core/services/storage_service.dart';
 import '../../../core/utils/constants/api_constants.dart';
 import '../../../core/utils/constants/colors.dart';
+import '../../../core/utils/helpers/app_helper.dart';
 import '../../../routes/app_routes.dart';
 
 class DashboardController extends GetxController {
+  final NetworkCaller _networkCaller = NetworkCaller();
+  bool _isFetchingOverview = false;
+
+  static const _categoryGradients = [
+    [AppColors.gaugeGreenStart, AppColors.gaugeGreenEnd],
+    [AppColors.gaugeYellowStart, AppColors.gaugeYellowEnd],
+    [AppColors.gaugePurpleStart, AppColors.gaugePurpleEnd],
+  ];
+
   final selectedNavIndex = 0.obs;
 
   final selectedDate = DateTime(DateTime.now().year, 6, 28).obs;
@@ -33,14 +43,14 @@ class DashboardController extends GetxController {
 
   StoreModel get selectedStore => stores[selectedStoreIndex.value];
 
-  final transactions = 3.obs;
-  final transactionsChange = (-70.0).obs;
+  final transactions = 0.obs;
+  final transactionsChange = 0.0.obs;
 
-  final netSales = 760.00.obs;
-  final netSalesChange = 22.55.obs;
+  final netSales = 0.0.obs;
+  final netSalesChange = 0.0.obs;
 
-  final averageSale = 1760.00.obs;
-  final averageSaleChange = 308.51.obs;
+  final averageSale = 0.0.obs;
+  final averageSaleChange = 0.0.obs;
 
   final totalNetSalesAmount = 17510.00.obs;
 
@@ -53,64 +63,12 @@ class DashboardController extends GetxController {
   final salesSummaryCostOfGoods = 5115.20.obs;
   final salesSummaryGrossProfit = 644.80.obs;
 
-  final chartValues = const [8300.0, 3400.0];
+  final chartValues = <double>[].obs;
+  final chartMaxValue = 10000.0.obs;
 
-  final items = const [
-    DashboardItemModel(
-      name: 'A4Ttech Mouse',
-      quantity: 1,
-      price: 400,
-      imageUrl: 'https://picsum.photos/seed/a4tech-mouse/200',
-    ),
-    DashboardItemModel(
-      name: 'HP Monitor',
-      quantity: 1,
-      price: 18000,
-      imageUrl: 'https://picsum.photos/seed/hp-monitor/200',
-    ),
-    DashboardItemModel(
-      name: 'HP Monitor',
-      quantity: 1,
-      price: 18000,
-      imageUrl: 'https://picsum.photos/seed/hp-monitor/200',
-    ),
-    DashboardItemModel(
-      name: 'HP Monitor',
-      quantity: 1,
-      price: 18000,
-      imageUrl: 'https://picsum.photos/seed/hp-monitor/200',
-    ),
-  ];
-
-  final categories = const [
-    DashboardCategoryModel(
-      name: 'External',
-      quantity: 2,
-      price: 400,
-      gradientColors: [AppColors.gaugeGreenStart, AppColors.gaugeGreenEnd],
-    ),
-    DashboardCategoryModel(
-      name: 'Computer',
-      quantity: 5,
-      price: 18000,
-      gradientColors: [AppColors.gaugeYellowStart, AppColors.gaugeYellowEnd],
-    ),
-  ];
-
-  final employees = const [
-    DashboardEmployeeModel(
-      name: 'Maxwell',
-      posLabel: 'POS-1',
-      earnings: 5760.00,
-      avatarUrl: 'https://picsum.photos/seed/maxwell/200',
-    ),
-    DashboardEmployeeModel(
-      name: 'Oliver',
-      posLabel: 'POS-2',
-      earnings: 4257.00,
-      avatarUrl: 'https://picsum.photos/seed/oliver/200',
-    ),
-  ];
+  final items = <DashboardItemModel>[].obs;
+  final categories = <DashboardCategoryModel>[].obs;
+  final employees = <DashboardEmployeeModel>[].obs;
 
   final stockFilters = const [
     'All Category',
@@ -226,6 +184,12 @@ class DashboardController extends GetxController {
   final settingsIpAddress = '192.152.11.145';
   final settingsAppVersion = '1.21';
 
+  @override
+  void onInit() {
+    super.onInit();
+    _fetchSalesOverview();
+  }
+
   void selectNavIndex(int index) => selectedNavIndex.value = index;
 
   void selectStockFilter(int index) => selectedStockFilterIndex.value = index;
@@ -258,6 +222,7 @@ class DashboardController extends GetxController {
     selectedDate.value = normalizedDate;
     selectedPeriodStart.value = normalizedDate;
     selectedPeriodEnd.value = normalizedDate;
+    _fetchSalesOverview();
   }
 
   void selectPeriod(DateTimeRange period) {
@@ -266,6 +231,7 @@ class DashboardController extends GetxController {
     selectedPeriodStart.value = start;
     selectedPeriodEnd.value = end;
     selectedDate.value = start;
+    _fetchSalesOverview();
   }
 
   void _shiftSelectedPeriod({required bool isForward}) {
@@ -283,4 +249,164 @@ class DashboardController extends GetxController {
 
   DateTime _dateOnly(DateTime date) =>
       DateTime(date.year, date.month, date.day);
+
+  Future<void> _fetchSalesOverview() async {
+    if (_isFetchingOverview) return;
+    _isFetchingOverview = true;
+
+    try {
+      final from = selectedPeriodStart.value;
+      final to = selectedPeriodEnd.value;
+      final periodDays = to.difference(from).inDays + 1;
+      final previousTo = from.subtract(const Duration(days: 1));
+      final previousFrom = previousTo.subtract(
+        Duration(days: periodDays - 1),
+      );
+
+      final responses = await Future.wait([
+        _networkCaller.getRequest(_overviewUrl(from, to)),
+        _networkCaller.getRequest(_overviewUrl(previousFrom, previousTo)),
+        _networkCaller.getRequest(
+          _dateRangeUrl(ApiConstants.categorySales, from, to),
+        ),
+        _networkCaller.getRequest(
+          _dateRangeUrl(ApiConstants.employeeSales, from, to),
+        ),
+      ]);
+
+      final current = responses[0];
+      final previous = responses[1];
+      final categorySales = responses[2];
+      final employeeSales = responses[3];
+
+      if (!current.isSuccess) {
+        AppHelperFunctions.showErrorSnackBar(current.errorMessage);
+        return;
+      }
+      _applyOverview(Map<String, dynamic>.from(current.responseData as Map));
+
+      if (previous.isSuccess && previous.responseData is Map) {
+        _applyPreviousPeriodChange(
+          Map<String, dynamic>.from(previous.responseData as Map),
+        );
+      }
+      if (categorySales.isSuccess && categorySales.responseData is Map) {
+        _applyCategorySales(
+          Map<String, dynamic>.from(categorySales.responseData as Map),
+        );
+      }
+      if (employeeSales.isSuccess && employeeSales.responseData is Map) {
+        _applyEmployeeSales(
+          Map<String, dynamic>.from(employeeSales.responseData as Map),
+        );
+      }
+    } finally {
+      _isFetchingOverview = false;
+    }
+  }
+
+  void _applyOverview(Map<String, dynamic> data) {
+    final cards = Map<String, dynamic>.from(data['cards'] as Map);
+    transactions.value = (cards['transactionCount'] as num?)?.toInt() ?? 0;
+    netSales.value = (cards['netSales'] as num?)?.toDouble() ?? 0;
+    averageSale.value = (cards['averageSale'] as num?)?.toDouble() ?? 0;
+
+    final chart = (data['chart'] as List? ?? const [])
+        .map((point) {
+          final row = Map<String, dynamic>.from(point as Map);
+          return (row['value'] as num?)?.toDouble() ?? 0.0;
+        })
+        .toList();
+    chartValues.value = chart;
+    chartMaxValue.value = chart.isEmpty
+        ? 10000.0
+        : (chart.reduce((a, b) => a > b ? a : b) * 1.2).clamp(
+            1.0,
+            double.infinity,
+          );
+
+    items.value = (data['topSellingItems'] as List? ?? const [])
+        .map((raw) {
+          final row = Map<String, dynamic>.from(raw as Map);
+          return DashboardItemModel(
+            name: row['name']?.toString() ?? '',
+            quantity: (row['quantity'] as num?)?.toInt() ?? 0,
+            price: (row['sales'] as num?)?.toDouble() ?? 0,
+            imageUrl: row['imageUrl']?.toString() ?? '',
+          );
+        })
+        .toList();
+  }
+
+  void _applyPreviousPeriodChange(Map<String, dynamic> data) {
+    final cards = Map<String, dynamic>.from(data['cards'] as Map);
+    final previousTransactions =
+        (cards['transactionCount'] as num?)?.toDouble() ?? 0;
+    final previousNetSales = (cards['netSales'] as num?)?.toDouble() ?? 0;
+    final previousAverageSale =
+        (cards['averageSale'] as num?)?.toDouble() ?? 0;
+
+    transactionsChange.value = _percentChange(
+      previousTransactions,
+      transactions.value.toDouble(),
+    );
+    netSalesChange.value = _percentChange(previousNetSales, netSales.value);
+    averageSaleChange.value = _percentChange(
+      previousAverageSale,
+      averageSale.value,
+    );
+  }
+
+  void _applyCategorySales(Map<String, dynamic> data) {
+    final rows = (data['rows'] as List? ?? const [])
+        .map((raw) => Map<String, dynamic>.from(raw as Map))
+        .toList();
+    categories.value = [
+      for (var i = 0; i < rows.length; i++)
+        DashboardCategoryModel(
+          name: rows[i]['categoryName']?.toString() ?? 'Uncategorized',
+          quantity: (rows[i]['itemsSold'] as num?)?.toInt() ?? 0,
+          price: (rows[i]['netSales'] as num?)?.toDouble() ?? 0,
+          gradientColors: _categoryGradients[i % _categoryGradients.length],
+        ),
+    ];
+  }
+
+  void _applyEmployeeSales(Map<String, dynamic> data) {
+    employees.value = (data['rows'] as List? ?? const [])
+        .map((raw) {
+          final row = Map<String, dynamic>.from(raw as Map);
+          final receipts = (row['receipts'] as num?)?.toInt() ?? 0;
+          return DashboardEmployeeModel(
+            name: row['employeeName']?.toString() ?? 'Unknown',
+            posLabel: '$receipts sale${receipts == 1 ? '' : 's'}',
+            earnings: (row['netSales'] as num?)?.toDouble() ?? 0,
+            avatarUrl: row['avatarUrl']?.toString() ?? '',
+          );
+        })
+        .toList();
+  }
+
+  double _percentChange(double previous, double current) {
+    if (previous == 0) return current == 0 ? 0 : 100;
+    return double.parse(
+      (((current - previous) / previous) * 100).toStringAsFixed(2),
+    );
+  }
+
+  String _overviewUrl(DateTime from, DateTime to) =>
+      _dateRangeUrl(ApiConstants.dashboardOverview, from, to);
+
+  String _dateRangeUrl(String base, DateTime from, DateTime to) {
+    return Uri.parse(base)
+        .replace(
+          queryParameters: {'from': _isoDate(from), 'to': _isoDate(to)},
+        )
+        .toString();
+  }
+
+  String _isoDate(DateTime date) =>
+      '${date.year.toString().padLeft(4, '0')}-'
+      '${date.month.toString().padLeft(2, '0')}-'
+      '${date.day.toString().padLeft(2, '0')}';
 }

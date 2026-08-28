@@ -73,67 +73,81 @@ class _SalesTabView extends StatelessWidget {
           SizedBox(height: sectionGap.h),
           GestureDetector(
             onTap: () => Get.toNamed(AppRoute.getSalesSummaryScreen()),
-            child: SalesBarChart(values: controller.chartValues),
+            child: Obx(
+              () => SalesBarChart(
+                values: controller.chartValues,
+                maxValue: controller.chartMaxValue.value,
+              ),
+            ),
           ),
           SizedBox(height: sectionGap.h),
-          DashboardListSection(
-            title: 'Items',
-            onSeeAllTap: () => Get.toNamed(AppRoute.getSalesByItemScreen()),
-            cards: [
-              for (final item in controller.items)
-                GradientListCard(
-                  leading: AppNetworkImage(
-                    url: item.imageUrl,
-                    width: 55.w,
-                    height: 55.w,
+          Obx(
+            () => DashboardListSection(
+              title: 'Items',
+              onSeeAllTap: () => Get.toNamed(AppRoute.getSalesByItemScreen()),
+              cards: [
+                for (final item in controller.items)
+                  GradientListCard(
+                    leading: AppNetworkImage(
+                      url: item.imageUrl,
+                      width: 55.w,
+                      height: 55.w,
+                    ),
+                    title: item.name,
+                    subtitle: 'x ${item.quantity}',
+                    trailingText: '\$${wholeAmount.format(item.price)}',
                   ),
-                  title: item.name,
-                  subtitle: 'x ${item.quantity}',
-                  trailingText: '\$${wholeAmount.format(item.price)}',
-                ),
-            ],
+              ],
+            ),
           ),
           SizedBox(height: sectionGap.h),
-          DashboardListSection(
-            title: 'Categories',
-            onSeeAllTap: () => Get.toNamed(AppRoute.getSalesByCategoryScreen()),
-            cards: [
-              for (final category in controller.categories)
-                GradientListCard(
-                  verticalPadding: 16,
-                  leading: Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: category.gradientColors,
+          Obx(
+            () => DashboardListSection(
+              title: 'Categories',
+              onSeeAllTap: () =>
+                  Get.toNamed(AppRoute.getSalesByCategoryScreen()),
+              cards: [
+                for (final category in controller.categories)
+                  GradientListCard(
+                    verticalPadding: 16,
+                    leading: Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: category.gradientColors,
+                        ),
                       ),
                     ),
+                    title: category.name,
+                    subtitle: 'x ${category.quantity}',
+                    trailingText: '\$${wholeAmount.format(category.price)}',
                   ),
-                  title: category.name,
-                  subtitle: 'x ${category.quantity}',
-                  trailingText: '\$${wholeAmount.format(category.price)}',
-                ),
-            ],
+              ],
+            ),
           ),
           SizedBox(height: sectionGap.h),
-          DashboardListSection(
-            title: 'Employees',
-            onSeeAllTap: () => Get.toNamed(AppRoute.getSalesByEmployeeScreen()),
-            cards: [
-              for (final employee in controller.employees)
-                GradientListCard(
-                  verticalPadding: 16,
-                  leading: AppNetworkImage(
-                    url: employee.avatarUrl,
-                    width: 55.w,
-                    height: 55.w,
+          Obx(
+            () => DashboardListSection(
+              title: 'Employees',
+              onSeeAllTap: () =>
+                  Get.toNamed(AppRoute.getSalesByEmployeeScreen()),
+              cards: [
+                for (final employee in controller.employees)
+                  GradientListCard(
+                    verticalPadding: 16,
+                    leading: AppNetworkImage(
+                      url: employee.avatarUrl,
+                      width: 55.w,
+                      height: 55.w,
+                    ),
+                    title: employee.name,
+                    subtitle: employee.posLabel,
+                    trailingText:
+                        '\$${decimalAmount.format(employee.earnings)}',
                   ),
-                  title: employee.name,
-                  subtitle: employee.posLabel,
-                  trailingText: '\$${decimalAmount.format(employee.earnings)}',
-                ),
-            ],
+              ],
+            ),
           ),
         ],
       ),
