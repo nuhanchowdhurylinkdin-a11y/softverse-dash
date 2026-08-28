@@ -200,6 +200,8 @@ class DashboardController extends GetxController {
     _fetchSalesOverview();
   }
 
+  Future<void> refreshSalesOverview() => _fetchSalesOverview();
+
   void selectNavIndex(int index) => selectedNavIndex.value = index;
 
   void selectStockFilter(int index) => selectedStockFilterIndex.value = index;
