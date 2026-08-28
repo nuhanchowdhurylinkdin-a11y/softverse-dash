@@ -6,7 +6,9 @@ import '../models/dashboard_employee_model.dart';
 import '../models/dashboard_item_model.dart';
 import '../models/inventory_product_model.dart';
 import '../models/store_model.dart';
+import '../../../core/services/storage_service.dart';
 import '../../../core/utils/constants/colors.dart';
+import '../../../routes/app_routes.dart';
 
 class DashboardController extends GetxController {
   final selectedNavIndex = 0.obs;
@@ -230,6 +232,11 @@ class DashboardController extends GetxController {
 
   void toggleStockNotifications() =>
       stockNotificationsEnabled.value = !stockNotificationsEnabled.value;
+
+  Future<void> logout() async {
+    await StorageService.logoutUser();
+    Get.offAllNamed(AppRoute.getLoginScreen());
+  }
 
   void selectStore(int index) => selectedStoreIndex.value = index;
 

@@ -87,7 +87,7 @@ class SettingsTabView extends StatelessWidget {
               width: 197.w,
               height: 68.h,
               backgroundColor: AppColors.dangerRed,
-              onPressed: () {},
+              onPressed: controller.logout,
             ),
           ),
         ],
