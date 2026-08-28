@@ -139,6 +139,7 @@ class DashboardController extends GetxController {
       price: 800,
       imageUrl: 'https://picsum.photos/seed/a4tech-keyboard-1/200',
       stockCount: 97,
+      category: 'PC Components',
     ),
     InventoryProductModel(
       name: 'A4Ttech Keyboard',
@@ -146,6 +147,7 @@ class DashboardController extends GetxController {
       price: 800,
       imageUrl: 'https://picsum.photos/seed/a4tech-keyboard-2/200',
       stockCount: 9,
+      category: 'PC Components',
     ),
     InventoryProductModel(
       name: 'A4Ttech Mouse',
@@ -153,6 +155,7 @@ class DashboardController extends GetxController {
       price: 400,
       imageUrl: 'https://picsum.photos/seed/a4tech-mouse-1/200',
       stockCount: 97,
+      category: 'PC Components',
     ),
     InventoryProductModel(
       name: 'A4Ttech Mouse',
@@ -160,6 +163,7 @@ class DashboardController extends GetxController {
       price: 400,
       imageUrl: 'https://picsum.photos/seed/a4tech-mouse-2/200',
       stockCount: 97,
+      category: 'PC Components',
     ),
     InventoryProductModel(
       name: 'HP Monitor',
@@ -167,6 +171,7 @@ class DashboardController extends GetxController {
       price: 18000,
       imageUrl: 'https://picsum.photos/seed/hp-monitor-1/200',
       stockCount: 7,
+      category: 'Monitor & Display',
     ),
     InventoryProductModel(
       name: 'HP Monitor',
@@ -174,6 +179,7 @@ class DashboardController extends GetxController {
       price: 18000,
       imageUrl: 'https://picsum.photos/seed/hp-monitor-2/200',
       stockCount: 0,
+      category: 'Monitor & Display',
     ),
     InventoryProductModel(
       name: 'HP Monitor',
@@ -181,6 +187,7 @@ class DashboardController extends GetxController {
       price: 18000,
       imageUrl: 'https://picsum.photos/seed/hp-monitor-3/200',
       stockCount: 97,
+      category: 'Monitor & Display',
     ),
     InventoryProductModel(
       name: 'HP Monitor',
@@ -188,8 +195,26 @@ class DashboardController extends GetxController {
       price: 18000,
       imageUrl: 'https://picsum.photos/seed/hp-monitor-4/200',
       stockCount: 0,
+      category: 'Monitor & Display',
     ),
   ];
+
+  List<InventoryProductModel> get filteredInventoryProducts {
+    final selectedCategory = selectedCategoryTabIndex.value == 0
+        ? null
+        : categoryTabs[selectedCategoryTabIndex.value];
+
+    return inventoryProducts.where((product) {
+      final matchesCategory =
+          selectedCategory == null || product.category == selectedCategory;
+      final matchesStock = switch (selectedStockFilterIndex.value) {
+        1 => product.stockCount > 0 && product.stockCount < 10,
+        2 => product.stockCount <= 0,
+        _ => true,
+      };
+      return matchesCategory && matchesStock;
+    }).toList();
+  }
 
   final stockNotificationsEnabled = true.obs;
   final settingsSound = 'SIMToolkitPositiveACK';
