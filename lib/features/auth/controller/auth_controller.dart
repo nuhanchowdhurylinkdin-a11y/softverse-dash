@@ -1,9 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+import '../../../core/services/network_caller.dart';
+import '../../../core/services/storage_service.dart';
+import '../../../core/utils/constants/api_constants.dart';
+import '../../../core/utils/helpers/app_helper.dart';
 import '../../../routes/app_routes.dart';
 
 class AuthController extends GetxController {
+  final NetworkCaller _networkCaller = NetworkCaller();
+
   final loginFormKey = GlobalKey<FormState>();
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
@@ -32,8 +38,31 @@ class AuthController extends GetxController {
     if (!loginFormKey.currentState!.validate()) return;
 
     isLoggingIn.value = true;
-    await Future.delayed(const Duration(seconds: 1));
+    final response = await _networkCaller.postRequest(
+      ApiConstants.login,
+      body: {
+        'email': emailController.text.trim(),
+        'password': passwordController.text,
+        'access': 'back_office',
+      },
+      token: '',
+    );
     isLoggingIn.value = false;
+
+    if (!response.isSuccess) {
+      AppHelperFunctions.showErrorSnackBar(response.errorMessage);
+      return;
+    }
+
+    final data = Map<String, dynamic>.from(response.responseData as Map);
+    final user = Map<String, dynamic>.from(data['user'] as Map);
+    await StorageService.saveUserSession(
+      id: user['id']?.toString() ?? '',
+      fullName: user['fullName']?.toString() ?? '',
+      email: user['email']?.toString() ?? '',
+      accessToken: data['accessToken']?.toString() ?? '',
+      refreshToken: data['refreshToken']?.toString() ?? '',
+    );
 
     Get.offAllNamed(AppRoute.getDashboardScreen());
   }

@@ -80,32 +80,36 @@ class NetworkCaller {
 
     dynamic decodedResponse;
     try {
-      decodedResponse = jsonDecode(response.body);
+      decodedResponse = response.body.isEmpty ? {} : jsonDecode(response.body);
     } on FormatException {
       return ResponseData(
-        isSuccess: false,
+        isSuccess: response.statusCode >= 200 && response.statusCode < 300,
         statusCode: response.statusCode,
         responseData: response.body,
-        errorMessage: 'Invalid response from server.',
+        errorMessage: response.statusCode >= 200 && response.statusCode < 300
+            ? ''
+            : 'Invalid response from server.',
       );
     }
 
-    if (response.statusCode == 200 || response.statusCode == 201) {
-      if (decodedResponse['success'] == true) {
-        return ResponseData(
-          isSuccess: true,
-          statusCode: response.statusCode,
-          responseData: decodedResponse,
-          errorMessage: '',
-        );
-      }
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return ResponseData(
+        isSuccess: true,
+        statusCode: response.statusCode,
+        responseData: decodedResponse,
+        errorMessage: '',
+      );
     }
 
     return ResponseData(
       isSuccess: false,
       statusCode: response.statusCode,
       responseData: decodedResponse,
-      errorMessage: decodedResponse['message'] ?? 'An error occurred',
+      errorMessage: decodedResponse is Map
+          ? (decodedResponse['message'] is List
+              ? (decodedResponse['message'] as List).join(', ')
+              : decodedResponse['message']?.toString() ?? 'An error occurred')
+          : 'An error occurred',
     );
   }
 
