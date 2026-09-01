@@ -6,6 +6,7 @@ import '../models/dashboard_employee_model.dart';
 import '../models/dashboard_item_model.dart';
 import '../models/inventory_product_model.dart';
 import '../models/store_model.dart';
+import '../data/dashboard_repository.dart';
 import '../../../core/services/network_caller.dart';
 import '../../../core/services/storage_service.dart';
 import '../../../core/utils/constants/api_constants.dart';
@@ -14,8 +15,11 @@ import '../../../core/utils/helpers/app_helper.dart';
 import '../../../routes/app_routes.dart';
 
 class DashboardController extends GetxController {
-  final NetworkCaller _networkCaller = NetworkCaller();
+  final DashboardRepository _dashboardRepository;
   bool _isFetchingOverview = false;
+
+  DashboardController({DashboardRepository? dashboardRepository})
+    : _dashboardRepository = dashboardRepository ?? HttpDashboardRepository();
 
   static const _categoryGradients = [
     [AppColors.gaugeGreenStart, AppColors.gaugeGreenEnd],
@@ -271,19 +275,13 @@ class DashboardController extends GetxController {
       final to = selectedPeriodEnd.value;
       final periodDays = to.difference(from).inDays + 1;
       final previousTo = from.subtract(const Duration(days: 1));
-      final previousFrom = previousTo.subtract(
-        Duration(days: periodDays - 1),
-      );
+      final previousFrom = previousTo.subtract(Duration(days: periodDays - 1));
 
       final responses = await Future.wait([
-        _networkCaller.getRequest(_overviewUrl(from, to)),
-        _networkCaller.getRequest(_overviewUrl(previousFrom, previousTo)),
-        _networkCaller.getRequest(
-          _dateRangeUrl(ApiConstants.categorySales, from, to),
-        ),
-        _networkCaller.getRequest(
-          _dateRangeUrl(ApiConstants.employeeSales, from, to),
-        ),
+        _dashboardRepository.fetchOverview(from, to),
+        _dashboardRepository.fetchOverview(previousFrom, previousTo),
+        _dashboardRepository.fetchCategorySales(from, to),
+        _dashboardRepository.fetchEmployeeSales(from, to),
       ]);
 
       final current = responses[0];
@@ -323,12 +321,10 @@ class DashboardController extends GetxController {
     netSales.value = (cards['netSales'] as num?)?.toDouble() ?? 0;
     averageSale.value = (cards['averageSale'] as num?)?.toDouble() ?? 0;
 
-    final chart = (data['chart'] as List? ?? const [])
-        .map((point) {
-          final row = Map<String, dynamic>.from(point as Map);
-          return (row['value'] as num?)?.toDouble() ?? 0.0;
-        })
-        .toList();
+    final chart = (data['chart'] as List? ?? const []).map((point) {
+      final row = Map<String, dynamic>.from(point as Map);
+      return (row['value'] as num?)?.toDouble() ?? 0.0;
+    }).toList();
     chartValues.value = chart;
     chartMaxValue.value = chart.isEmpty
         ? 10000.0
@@ -337,17 +333,15 @@ class DashboardController extends GetxController {
             double.infinity,
           );
 
-    items.value = (data['topSellingItems'] as List? ?? const [])
-        .map((raw) {
-          final row = Map<String, dynamic>.from(raw as Map);
-          return DashboardItemModel(
-            name: row['name']?.toString() ?? '',
-            quantity: (row['quantity'] as num?)?.toInt() ?? 0,
-            price: (row['sales'] as num?)?.toDouble() ?? 0,
-            imageUrl: ApiConstants.resolveAssetUrl(row['imageUrl']?.toString()),
-          );
-        })
-        .toList();
+    items.value = (data['topSellingItems'] as List? ?? const []).map((raw) {
+      final row = Map<String, dynamic>.from(raw as Map);
+      return DashboardItemModel(
+        name: row['name']?.toString() ?? '',
+        quantity: (row['quantity'] as num?)?.toInt() ?? 0,
+        price: (row['sales'] as num?)?.toDouble() ?? 0,
+        imageUrl: ApiConstants.resolveAssetUrl(row['imageUrl']?.toString()),
+      );
+    }).toList();
   }
 
   void _applyPreviousPeriodChange(Map<String, dynamic> data) {
@@ -355,8 +349,7 @@ class DashboardController extends GetxController {
     final previousTransactions =
         (cards['transactionCount'] as num?)?.toDouble() ?? 0;
     final previousNetSales = (cards['netSales'] as num?)?.toDouble() ?? 0;
-    final previousAverageSale =
-        (cards['averageSale'] as num?)?.toDouble() ?? 0;
+    final previousAverageSale = (cards['averageSale'] as num?)?.toDouble() ?? 0;
 
     transactionsChange.value = _percentChange(
       previousTransactions,
@@ -385,18 +378,16 @@ class DashboardController extends GetxController {
   }
 
   void _applyEmployeeSales(Map<String, dynamic> data) {
-    employees.value = (data['rows'] as List? ?? const [])
-        .map((raw) {
-          final row = Map<String, dynamic>.from(raw as Map);
-          final receipts = (row['receipts'] as num?)?.toInt() ?? 0;
-          return DashboardEmployeeModel(
-            name: row['employeeName']?.toString() ?? 'Unknown',
-            posLabel: '$receipts sale${receipts == 1 ? '' : 's'}',
-            earnings: (row['netSales'] as num?)?.toDouble() ?? 0,
-            avatarUrl: ApiConstants.resolveAssetUrl(row['avatarUrl']?.toString()),
-          );
-        })
-        .toList();
+    employees.value = (data['rows'] as List? ?? const []).map((raw) {
+      final row = Map<String, dynamic>.from(raw as Map);
+      final receipts = (row['receipts'] as num?)?.toInt() ?? 0;
+      return DashboardEmployeeModel(
+        name: row['employeeName']?.toString() ?? 'Unknown',
+        posLabel: '$receipts sale${receipts == 1 ? '' : 's'}',
+        earnings: (row['netSales'] as num?)?.toDouble() ?? 0,
+        avatarUrl: ApiConstants.resolveAssetUrl(row['avatarUrl']?.toString()),
+      );
+    }).toList();
   }
 
   double _percentChange(double previous, double current) {
@@ -405,20 +396,4 @@ class DashboardController extends GetxController {
       (((current - previous) / previous) * 100).toStringAsFixed(2),
     );
   }
-
-  String _overviewUrl(DateTime from, DateTime to) =>
-      _dateRangeUrl(ApiConstants.dashboardOverview, from, to);
-
-  String _dateRangeUrl(String base, DateTime from, DateTime to) {
-    return Uri.parse(base)
-        .replace(
-          queryParameters: {'from': _isoDate(from), 'to': _isoDate(to)},
-        )
-        .toString();
-  }
-
-  String _isoDate(DateTime date) =>
-      '${date.year.toString().padLeft(4, '0')}-'
-      '${date.month.toString().padLeft(2, '0')}-'
-      '${date.day.toString().padLeft(2, '0')}';
 }
