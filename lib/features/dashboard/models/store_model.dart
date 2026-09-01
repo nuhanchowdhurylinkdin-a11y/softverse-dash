@@ -1,5 +1,6 @@
 class StoreModel {
+  final String? id;
   final String name;
 
-  const StoreModel({required this.name});
+  const StoreModel({this.id, required this.name});
 }
