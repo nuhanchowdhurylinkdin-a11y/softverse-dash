@@ -7,6 +7,7 @@ class StorageService {
   static const String _nameKey = 'fullName';
   static const String _emailKey = 'email';
   static const String _themeModeKey = 'themeMode';
+  static const String _selectedStoreIdKey = 'selectedStoreId';
 
   static SharedPreferences? _preferences;
 
@@ -14,14 +15,15 @@ class StorageService {
     _preferences = await SharedPreferences.getInstance();
   }
 
-  static bool hasToken() =>
-      _preferences?.getString(_accessTokenKey) != null;
+  static bool hasToken() => _preferences?.getString(_accessTokenKey) != null;
 
   static String? get accessToken => _preferences?.getString(_accessTokenKey);
   static String? get refreshToken => _preferences?.getString(_refreshTokenKey);
   static String? get userId => _preferences?.getString(_idKey);
   static String? get fullName => _preferences?.getString(_nameKey);
   static String? get email => _preferences?.getString(_emailKey);
+  static String? get selectedStoreId =>
+      _preferences?.getString(_selectedStoreIdKey);
 
   static Future<void> saveUserSession({
     required String id,
@@ -45,12 +47,29 @@ class StorageService {
     await _preferences?.setString(_refreshTokenKey, refreshToken);
   }
 
+  static Future<void> updateIdentity({
+    required String fullName,
+    required String email,
+  }) async {
+    await _preferences?.setString(_nameKey, fullName);
+    await _preferences?.setString(_emailKey, email);
+  }
+
+  static Future<void> setSelectedStoreId(String? storeId) async {
+    if (storeId == null) {
+      await _preferences?.remove(_selectedStoreIdKey);
+      return;
+    }
+    await _preferences?.setString(_selectedStoreIdKey, storeId);
+  }
+
   static Future<void> logoutUser() async {
     await _preferences?.remove(_accessTokenKey);
     await _preferences?.remove(_refreshTokenKey);
     await _preferences?.remove(_idKey);
     await _preferences?.remove(_nameKey);
     await _preferences?.remove(_emailKey);
+    await _preferences?.remove(_selectedStoreIdKey);
   }
 
   static String get themeMode =>

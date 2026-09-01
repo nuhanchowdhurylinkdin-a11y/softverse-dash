@@ -75,7 +75,12 @@ class SettingsTabView extends StatelessWidget {
           SizedBox(height: 20.h),
           Divider(color: AppColors.dashboardCardBorder, height: 1),
           SizedBox(height: 24.h),
-          _InlineRow(label: 'Account', value: controller.settingsAccountEmail),
+          Obx(
+            () => _InlineRow(
+              label: 'Account',
+              value: controller.settingsAccountEmail,
+            ),
+          ),
           SizedBox(height: 12.h),
           _InlineRow(label: 'IP address', value: controller.settingsIpAddress),
           SizedBox(height: 12.h),

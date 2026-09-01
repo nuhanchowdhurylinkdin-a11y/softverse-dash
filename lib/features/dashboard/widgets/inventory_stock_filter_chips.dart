@@ -19,6 +19,7 @@ class InventoryStockFilterChips extends StatelessWidget {
     Iconsax.trend_down,
     Iconsax.close_circle,
     Iconsax.calendar_2,
+    Iconsax.calendar_tick,
   ];
 
   @override
@@ -59,7 +60,9 @@ class _FilterChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final foreground = isSelected ? Colors.white : AppColors.dashboardAccentBlue;
+    final foreground = isSelected
+        ? Colors.white
+        : AppColors.dashboardAccentBlue;
 
     return GestureDetector(
       onTap: onTap,
@@ -74,15 +77,22 @@ class _FilterChip extends StatelessWidget {
               ? const LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
-                  colors: [AppColors.authGradientStart, AppColors.authGradientEnd],
+                  colors: [
+                    AppColors.authGradientStart,
+                    AppColors.authGradientEnd,
+                  ],
                 )
               : null,
           color: isSelected ? null : AppColors.inventoryChipBg,
-          border: isSelected ? null : Border.all(color: AppColors.dashboardCardBorder),
+          border: isSelected
+              ? null
+              : Border.all(color: AppColors.dashboardCardBorder),
           boxShadow: isSelected
               ? [
                   BoxShadow(
-                    color: AppColors.dashboardAccentBlue.withValues(alpha: 0.28),
+                    color: AppColors.dashboardAccentBlue.withValues(
+                      alpha: 0.28,
+                    ),
                     blurRadius: 12,
                     offset: const Offset(0, 4),
                   ),
