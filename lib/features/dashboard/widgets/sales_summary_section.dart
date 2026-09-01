@@ -49,9 +49,8 @@ class SalesSummarySection extends StatelessWidget {
                 ),
               ),
               label: 'Transections',
-              changeBuilder: () => Obx(
-                () => _ChangeText(controller.transactionsChange.value),
-              ),
+              changeBuilder: () =>
+                  Obx(() => _ChangeText(controller.transactionsChange.value)),
             ),
             _GaugeStat(
               size: 129.w,
@@ -63,7 +62,7 @@ class SalesSummarySection extends StatelessWidget {
               ],
               valueBuilder: () => Obx(
                 () => Text(
-                  '\$${controller.netSales.value.toStringAsFixed(2)}',
+                  '${controller.currencySymbol}${controller.netSales.value.toStringAsFixed(2)}',
                   style: getTextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.w500,
@@ -72,9 +71,8 @@ class SalesSummarySection extends StatelessWidget {
                 ),
               ),
               label: 'Net sales',
-              changeBuilder: () => Obx(
-                () => _ChangeText(controller.netSalesChange.value),
-              ),
+              changeBuilder: () =>
+                  Obx(() => _ChangeText(controller.netSalesChange.value)),
             ),
             _GaugeStat(
               size: 100.w,
@@ -86,7 +84,7 @@ class SalesSummarySection extends StatelessWidget {
               ],
               valueBuilder: () => Obx(
                 () => Text(
-                  '\$${controller.averageSale.value.toStringAsFixed(2)}',
+                  '${controller.currencySymbol}${controller.averageSale.value.toStringAsFixed(2)}',
                   style: getTextStyle(
                     fontSize: 17,
                     fontWeight: FontWeight.w500,
@@ -95,9 +93,8 @@ class SalesSummarySection extends StatelessWidget {
                 ),
               ),
               label: 'Average sale',
-              changeBuilder: () => Obx(
-                () => _ChangeText(controller.averageSaleChange.value),
-              ),
+              changeBuilder: () =>
+                  Obx(() => _ChangeText(controller.averageSaleChange.value)),
             ),
           ],
         ),

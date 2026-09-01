@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
-import 'package:intl/intl.dart';
 
 import '../../../core/common/styles/global_text_style.dart';
 import '../../../core/common/widgets/gradient_app_bar.dart';
@@ -23,9 +22,13 @@ class SalesDetailScaffold extends StatelessWidget {
   final String sectionLabel;
   final String footerTitle;
   final String footerCountLabel;
+  final String footerAmount;
   final List<Widget> listItems;
-
-  static final _decimalAmount = NumberFormat('#,##0.00');
+  final bool isLoading;
+  final String? error;
+  final bool hasMore;
+  final Future<void> Function() onRefresh;
+  final Future<void> Function() onLoadMore;
 
   const SalesDetailScaffold({
     super.key,
@@ -34,7 +37,13 @@ class SalesDetailScaffold extends StatelessWidget {
     required this.sectionLabel,
     required this.footerTitle,
     required this.footerCountLabel,
+    required this.footerAmount,
     required this.listItems,
+    required this.isLoading,
+    required this.error,
+    required this.hasMore,
+    required this.onRefresh,
+    required this.onLoadMore,
   });
 
   @override
@@ -96,29 +105,87 @@ class SalesDetailScaffold extends StatelessWidget {
               ),
               SizedBox(height: 11.h),
               Expanded(
-                child: SingleChildScrollView(
-                  child: Column(
-                    children: [
-                      for (int i = 0; i < listItems.length; i++) ...[
-                        if (i > 0) SizedBox(height: 8.h),
-                        listItems[i],
-                      ],
-                    ],
-                  ),
+                child: _ReportBody(
+                  items: listItems,
+                  isLoading: isLoading,
+                  error: error,
+                  hasMore: hasMore,
+                  onRefresh: onRefresh,
+                  onLoadMore: onLoadMore,
                 ),
               ),
               SizedBox(height: 16.h),
-              Obx(
-                () => SalesSummaryFooterCard(
-                  title: footerTitle,
-                  countLabel: footerCountLabel,
-                  amount: '\$${_decimalAmount.format(controller.totalNetSalesAmount.value)}',
-                ),
+              SalesSummaryFooterCard(
+                title: footerTitle,
+                countLabel: footerCountLabel,
+                amount: footerAmount,
               ),
             ],
           ),
         ),
         bottomNavigationBar: DashboardBottomNav(controller: controller),
+      ),
+    );
+  }
+}
+
+class _ReportBody extends StatelessWidget {
+  final List<Widget> items;
+  final bool isLoading;
+  final String? error;
+  final bool hasMore;
+  final Future<void> Function() onRefresh;
+  final Future<void> Function() onLoadMore;
+
+  const _ReportBody({
+    required this.items,
+    required this.isLoading,
+    required this.error,
+    required this.hasMore,
+    required this.onRefresh,
+    required this.onLoadMore,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (isLoading && items.isEmpty) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (error != null && items.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(error!, textAlign: TextAlign.center),
+            TextButton(onPressed: onRefresh, child: const Text('Try again')),
+          ],
+        ),
+      );
+    }
+    return RefreshIndicator(
+      onRefresh: onRefresh,
+      child: ListView.separated(
+        physics: const AlwaysScrollableScrollPhysics(),
+        itemCount: items.length + 1,
+        separatorBuilder: (_, _) => SizedBox(height: 8.h),
+        itemBuilder: (_, index) {
+          if (index < items.length) return items[index];
+          if (items.isEmpty) {
+            return Padding(
+              padding: EdgeInsets.only(top: 160.h),
+              child: const Center(child: Text('No sales found')),
+            );
+          }
+          if (!hasMore) return const SizedBox.shrink();
+          return Center(
+            child: isLoading
+                ? const CircularProgressIndicator()
+                : TextButton(
+                    onPressed: onLoadMore,
+                    child: const Text('Load more'),
+                  ),
+          );
+        },
       ),
     );
   }

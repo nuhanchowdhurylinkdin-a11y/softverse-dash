@@ -28,6 +28,16 @@ void main() {
       expiringSoonDays: 30,
       search: 'BAR-1',
     );
+    await repository.fetchItemSales(
+      from,
+      to,
+      storeId: 'store-1',
+      limit: 20,
+      offset: 20,
+    );
+    await repository.fetchSalesSummary(from, to, storeId: 'store-1');
+    await repository.fetchCategorySalesPage(from, to, limit: 20, offset: 0);
+    await repository.fetchEmployeeSalesPage(from, to, limit: 20, offset: 0);
 
     expect(network.urls, [
       'https://phase-one.test/business-admin-dashboard/overview?from=2026-08-01&to=2026-08-31',
@@ -37,6 +47,10 @@ void main() {
       'https://phase-one.test/business-admin-dashboard/settings/stores',
       'https://phase-one.test/categories',
       'https://phase-one.test/inventory?storeId=store-1&categoryId=category-1&expirationStatus=expiring_soon&expiringSoonDays=30&search=BAR-1&limit=100',
+      'https://phase-one.test/reports/item-sales?from=2026-08-01&to=2026-08-31&storeId=store-1&limit=20&offset=20',
+      'https://phase-one.test/reports/sales-summary?from=2026-08-01&to=2026-08-31&storeId=store-1',
+      'https://phase-one.test/reports/category-sales?from=2026-08-01&to=2026-08-31&limit=20&offset=0',
+      'https://phase-one.test/reports/employee-sales?from=2026-08-01&to=2026-08-31&limit=20&offset=0',
     ]);
   });
 }

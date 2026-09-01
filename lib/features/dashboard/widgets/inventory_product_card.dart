@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/common/styles/global_text_style.dart';
 import '../../../core/common/widgets/app_network_image.dart';
 import '../../../core/utils/constants/colors.dart';
 import '../models/inventory_product_model.dart';
+import '../controller/dashboard_controller.dart';
 
 /// A single inventory row: product image, name/SKU, and a stock-status
 /// badge above the price.
@@ -107,7 +109,7 @@ class InventoryProductCard extends StatelessWidget {
                   SizedBox(height: 4.h),
                 ],
                 Text(
-                  '\$${_wholeAmount.format(product.price)}',
+                  '${Get.find<DashboardController>().currencySymbol}${_wholeAmount.format(product.price)}',
                   style: getTextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w500,

@@ -127,6 +127,63 @@ void main() {
     await restored.refreshStores();
     expect(restored.selectedStore.id, 'store-1');
   });
+
+  test(
+    'item report uses dedicated paginated API rows and full totals',
+    () async {
+      final repository = _FakeDashboardRepository()
+        ..itemReportRows = List.generate(
+          21,
+          (index) => {
+            'itemId': 'item-$index',
+            'itemName': 'Item $index',
+            'quantitySold': 1,
+            'netSales': 10,
+            'imageUrl': '',
+          },
+        );
+      final controller = DashboardController(dashboardRepository: repository);
+
+      await controller.openReport(SalesReportKind.item);
+      expect(controller.reportItems, hasLength(20));
+      expect(controller.reportTotal.value, 21);
+      expect(controller.reportNetSales.value, 210);
+      expect(controller.canLoadMoreReport, isTrue);
+
+      await controller.refreshActiveReport(loadMore: true);
+      expect(controller.reportItems, hasLength(21));
+      expect(controller.canLoadMoreReport, isFalse);
+    },
+  );
+
+  test('sales summary maps every named API total and currency', () async {
+    final repository = _FakeDashboardRepository()
+      ..summaryTotals = {
+        'grossSales': 100,
+        'refunds': 10,
+        'discounts': 5,
+        'netSales': 85,
+        'taxes': 8.5,
+        'totalTendered': 93.5,
+        'costOfGoods': 40,
+        'grossProfit': 45,
+      };
+    final controller = DashboardController(dashboardRepository: repository);
+
+    await controller.refreshIdentity();
+    await controller.openReport(SalesReportKind.summary);
+
+    expect(controller.currencySymbol, r'$');
+    expect(controller.salesSummaryNetSales.value, 85);
+    expect(controller.salesSummaryTotalTendered.value, 93.5);
+    expect(controller.salesSummaryCostOfGoods.value, 40);
+    expect(
+      controller.salesSummaryGrossSales.value -
+          controller.salesSummaryRefunds.value -
+          controller.salesSummaryDiscounts.value,
+      controller.salesSummaryNetSales.value,
+    );
+  });
 }
 
 class _FakeDashboardRepository implements DashboardRepository {
@@ -135,6 +192,8 @@ class _FakeDashboardRepository implements DashboardRepository {
   final employeeRanges = <(DateTime, DateTime)>[];
   List<Map<String, dynamic>> inventoryRows = [];
   List<Map<String, dynamic>> storeRows = [];
+  List<Map<String, dynamic>> itemReportRows = [];
+  Map<String, dynamic> summaryTotals = {'netSales': 0};
   String? lastExpirationStatus;
   int? lastExpiringSoonDays;
 
@@ -206,7 +265,11 @@ class _FakeDashboardRepository implements DashboardRepository {
 
   @override
   Future<ResponseData> fetchIdentity() async => _success({
-    'user': {'email': 'owner@business.test', 'fullName': 'Owner'},
+    'user': {
+      'email': 'owner@business.test',
+      'fullName': 'Owner',
+      'currency': 'USD',
+    },
   });
 
   @override
@@ -228,6 +291,52 @@ class _FakeDashboardRepository implements DashboardRepository {
     lastExpiringSoonDays = expiringSoonDays;
     return _success({'items': inventoryRows});
   }
+
+  @override
+  Future<ResponseData> fetchItemSales(
+    DateTime from,
+    DateTime to, {
+    String? storeId,
+    int limit = 20,
+    int offset = 0,
+  }) async => _success({
+    'total': itemReportRows.length,
+    'totals': {'netSales': itemReportRows.length * 10},
+    'rows': itemReportRows.skip(offset).take(limit).toList(),
+  });
+
+  @override
+  Future<ResponseData> fetchSalesSummary(
+    DateTime from,
+    DateTime to, {
+    String? storeId,
+  }) async => _success({'total': 0, 'totals': summaryTotals, 'rows': []});
+
+  @override
+  Future<ResponseData> fetchCategorySalesPage(
+    DateTime from,
+    DateTime to, {
+    String? storeId,
+    int limit = 20,
+    int offset = 0,
+  }) async => _success({
+    'total': 0,
+    'totals': {'netSales': 0},
+    'rows': [],
+  });
+
+  @override
+  Future<ResponseData> fetchEmployeeSalesPage(
+    DateTime from,
+    DateTime to, {
+    String? storeId,
+    int limit = 20,
+    int offset = 0,
+  }) async => _success({
+    'total': 0,
+    'totals': {'netSales': 0},
+    'rows': [],
+  });
 
   ResponseData _success(dynamic data) => ResponseData(
     isSuccess: true,

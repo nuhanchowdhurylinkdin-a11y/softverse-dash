@@ -7,6 +7,7 @@ import '../models/dashboard_category_model.dart';
 import '../models/dashboard_employee_model.dart';
 import '../models/dashboard_item_model.dart';
 import '../models/inventory_product_model.dart';
+import '../models/sales_report_models.dart';
 import '../models/store_model.dart';
 import '../data/dashboard_repository.dart';
 import '../widgets/inventory_product_details_sheet.dart';
@@ -16,6 +17,8 @@ import '../../../core/utils/constants/api_constants.dart';
 import '../../../core/utils/constants/colors.dart';
 import '../../../core/utils/helpers/app_helper.dart';
 import '../../../routes/app_routes.dart';
+
+enum SalesReportKind { item, category, employee, summary }
 
 class DashboardController extends GetxController {
   final DashboardRepository _dashboardRepository;
@@ -75,6 +78,29 @@ class DashboardController extends GetxController {
   final salesSummaryTotalTendered = 0.0.obs;
   final salesSummaryCostOfGoods = 0.0.obs;
   final salesSummaryGrossProfit = 0.0.obs;
+  final reportItems = <ItemSalesReportRow>[].obs;
+  final reportCategories = <CategorySalesReportRow>[].obs;
+  final reportEmployees = <EmployeeSalesReportRow>[].obs;
+  final reportTotal = 0.obs;
+  final reportNetSales = 0.0.obs;
+  final isReportLoading = false.obs;
+  final reportError = RxnString();
+  final activeReport = Rxn<SalesReportKind>();
+  final currencyCode = ''.obs;
+  static const reportPageSize = 20;
+
+  String get currencySymbol => switch (currencyCode.value.toUpperCase()) {
+    'USD' => r'$',
+    'EUR' => '€',
+    'GBP' => '£',
+    'BDT' => '৳',
+    'INR' => '₹',
+    final code when code.isNotEmpty => '$code ',
+    _ => '',
+  };
+
+  String money(num value, {int decimals = 2}) =>
+      '$currencySymbol${value.toStringAsFixed(decimals)}';
 
   final chartValues = <double>[].obs;
   final chartMaxValue = 10000.0.obs;
@@ -156,7 +182,11 @@ class DashboardController extends GetxController {
     if (index < 0 || index >= stores.length) return;
     selectedStoreIndex.value = index;
     await StorageService.setSelectedStoreId(selectedStore.id);
-    await Future.wait([_fetchSalesOverview(), refreshInventory()]);
+    await Future.wait([
+      _fetchSalesOverview(),
+      refreshInventory(),
+      refreshActiveReport(),
+    ]);
   }
 
   void clearAccountState() {
@@ -176,6 +206,7 @@ class DashboardController extends GetxController {
     salesSummaryTotalTendered.value = 0;
     salesSummaryCostOfGoods.value = 0;
     salesSummaryGrossProfit.value = 0;
+    _clearReportState();
     chartValues.clear();
     chartMaxValue.value = 10000;
     items.clear();
@@ -211,6 +242,7 @@ class DashboardController extends GetxController {
         user['fullName']?.toString().trim() ??
         user['name']?.toString().trim() ??
         '';
+    currencyCode.value = user['currency']?.toString().trim() ?? '';
     if (email.isEmpty) return;
     accountEmail.value = email;
     await StorageService.updateIdentity(fullName: name, email: email);
@@ -321,6 +353,180 @@ class DashboardController extends GetxController {
   void openInventoryProduct(InventoryProductModel product) =>
       showInventoryProductDetails(product);
 
+  Future<void> openReport(SalesReportKind kind) async {
+    activeReport.value = kind;
+    await refreshActiveReport();
+  }
+
+  void closeReport() {
+    activeReport.value = null;
+    _clearReportState();
+  }
+
+  bool get canLoadMoreReport {
+    final loaded = switch (activeReport.value) {
+      SalesReportKind.item => reportItems.length,
+      SalesReportKind.category => reportCategories.length,
+      SalesReportKind.employee => reportEmployees.length,
+      _ => reportTotal.value,
+    };
+    return loaded < reportTotal.value;
+  }
+
+  Future<void> refreshActiveReport({bool loadMore = false}) async {
+    final kind = activeReport.value;
+    if (kind == null || isReportLoading.value) return;
+    final currentLength = switch (kind) {
+      SalesReportKind.item => reportItems.length,
+      SalesReportKind.category => reportCategories.length,
+      SalesReportKind.employee => reportEmployees.length,
+      SalesReportKind.summary => 0,
+    };
+    final offset = loadMore ? currentLength : 0;
+    if (!loadMore) {
+      _clearReportRows();
+      reportError.value = null;
+    }
+    isReportLoading.value = true;
+    final response = await switch (kind) {
+      SalesReportKind.item => _dashboardRepository.fetchItemSales(
+        selectedPeriodStart.value,
+        selectedPeriodEnd.value,
+        storeId: selectedStore.id,
+        limit: reportPageSize,
+        offset: offset,
+      ),
+      SalesReportKind.category => _dashboardRepository.fetchCategorySalesPage(
+        selectedPeriodStart.value,
+        selectedPeriodEnd.value,
+        storeId: selectedStore.id,
+        limit: reportPageSize,
+        offset: offset,
+      ),
+      SalesReportKind.employee => _dashboardRepository.fetchEmployeeSalesPage(
+        selectedPeriodStart.value,
+        selectedPeriodEnd.value,
+        storeId: selectedStore.id,
+        limit: reportPageSize,
+        offset: offset,
+      ),
+      SalesReportKind.summary => _dashboardRepository.fetchSalesSummary(
+        selectedPeriodStart.value,
+        selectedPeriodEnd.value,
+        storeId: selectedStore.id,
+      ),
+    };
+    isReportLoading.value = false;
+    if (!response.isSuccess || response.responseData is! Map) {
+      reportError.value = response.errorMessage.isEmpty
+          ? 'Unable to load this report.'
+          : response.errorMessage;
+      return;
+    }
+    final data = Map<String, dynamic>.from(response.responseData as Map);
+    _applyReport(kind, data, append: loadMore);
+  }
+
+  void _applyReport(
+    SalesReportKind kind,
+    Map<String, dynamic> data, {
+    required bool append,
+  }) {
+    final rows = (data['rows'] as List? ?? const [])
+        .whereType<Map>()
+        .map((row) => Map<String, dynamic>.from(row))
+        .toList();
+    final totals = data['totals'] is Map
+        ? Map<String, dynamic>.from(data['totals'] as Map)
+        : <String, dynamic>{};
+    reportTotal.value = (data['total'] as num?)?.toInt() ?? rows.length;
+    reportNetSales.value = (totals['netSales'] as num?)?.toDouble() ?? 0;
+    if (kind == SalesReportKind.item) {
+      final mapped = rows
+          .map(
+            (row) => ItemSalesReportRow(
+              id: row['itemId']?.toString() ?? '',
+              name: row['itemName']?.toString() ?? 'Unnamed item',
+              imageUrl: ApiConstants.resolveAssetUrl(
+                row['imageUrl']?.toString(),
+              ),
+              quantitySold: (row['quantitySold'] as num?)?.toDouble() ?? 0,
+              netSales: (row['netSales'] as num?)?.toDouble() ?? 0,
+            ),
+          )
+          .toList();
+      append ? reportItems.addAll(mapped) : reportItems.assignAll(mapped);
+    } else if (kind == SalesReportKind.category) {
+      final mapped = rows
+          .map(
+            (row) => CategorySalesReportRow(
+              id: row['categoryId']?.toString(),
+              name: row['categoryName']?.toString() ?? 'Uncategorized',
+              itemsSold: (row['itemsSold'] as num?)?.toDouble() ?? 0,
+              netSales: (row['netSales'] as num?)?.toDouble() ?? 0,
+            ),
+          )
+          .toList();
+      append
+          ? reportCategories.addAll(mapped)
+          : reportCategories.assignAll(mapped);
+    } else if (kind == SalesReportKind.employee) {
+      final mapped = rows
+          .map(
+            (row) => EmployeeSalesReportRow(
+              id: row['employeeId']?.toString() ?? '',
+              name: row['employeeName']?.toString() ?? 'Unknown employee',
+              avatarUrl: ApiConstants.resolveAssetUrl(
+                row['avatarUrl']?.toString(),
+              ),
+              receipts: (row['receipts'] as num?)?.toInt() ?? 0,
+              netSales: (row['netSales'] as num?)?.toDouble() ?? 0,
+            ),
+          )
+          .toList();
+      append
+          ? reportEmployees.addAll(mapped)
+          : reportEmployees.assignAll(mapped);
+    } else {
+      salesSummaryGrossSales.value =
+          (totals['grossSales'] as num?)?.toDouble() ?? 0;
+      salesSummaryRefunds.value = (totals['refunds'] as num?)?.toDouble() ?? 0;
+      salesSummaryDiscounts.value =
+          (totals['discounts'] as num?)?.toDouble() ?? 0;
+      salesSummaryNetSales.value = reportNetSales.value;
+      salesSummaryTaxes.value = (totals['taxes'] as num?)?.toDouble() ?? 0;
+      salesSummaryTotalTendered.value =
+          (totals['totalTendered'] as num?)?.toDouble() ?? 0;
+      salesSummaryCostOfGoods.value =
+          (totals['costOfGoods'] as num?)?.toDouble() ?? 0;
+      salesSummaryGrossProfit.value =
+          (totals['grossProfit'] as num?)?.toDouble() ?? 0;
+    }
+  }
+
+  void _clearReportRows() {
+    reportItems.clear();
+    reportCategories.clear();
+    reportEmployees.clear();
+    reportTotal.value = 0;
+    reportNetSales.value = 0;
+    salesSummaryGrossSales.value = 0;
+    salesSummaryRefunds.value = 0;
+    salesSummaryDiscounts.value = 0;
+    salesSummaryNetSales.value = 0;
+    salesSummaryTaxes.value = 0;
+    salesSummaryTotalTendered.value = 0;
+    salesSummaryCostOfGoods.value = 0;
+    salesSummaryGrossProfit.value = 0;
+  }
+
+  void _clearReportState() {
+    _clearReportRows();
+    activeReport.value = null;
+    reportError.value = null;
+    isReportLoading.value = false;
+  }
+
   void goToPreviousDay() => _shiftSelectedPeriod(isForward: false);
 
   void goToNextDay() => _shiftSelectedPeriod(isForward: true);
@@ -340,6 +546,7 @@ class DashboardController extends GetxController {
     selectedPeriodEnd.value = end;
     selectedDate.value = start;
     _fetchSalesOverview();
+    unawaited(refreshActiveReport());
   }
 
   void _shiftSelectedPeriod({required bool isForward}) {
