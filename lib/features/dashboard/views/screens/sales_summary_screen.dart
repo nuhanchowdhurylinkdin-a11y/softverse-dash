@@ -11,8 +11,29 @@ import '../../widgets/dashboard_date_bar.dart';
 import '../../widgets/sales_summary_breakdown_card.dart';
 import '../../widgets/store_switcher.dart';
 
-class SalesSummaryScreen extends GetView<DashboardController> {
+class SalesSummaryScreen extends StatefulWidget {
   const SalesSummaryScreen({super.key});
+
+  @override
+  State<SalesSummaryScreen> createState() => _SalesSummaryScreenState();
+}
+
+class _SalesSummaryScreenState extends State<SalesSummaryScreen> {
+  final controller = Get.find<DashboardController>();
+
+  @override
+  void initState() {
+    super.initState();
+    controller.openReport(SalesReportKind.summary);
+  }
+
+  @override
+  void dispose() {
+    if (controller.activeReport.value == SalesReportKind.summary) {
+      controller.closeReport();
+    }
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -34,9 +55,29 @@ class SalesSummaryScreen extends GetView<DashboardController> {
           trailing: StoreSwitcher(controller: controller),
           bottom: DashboardDateBar(controller: controller),
         ),
-        body: Padding(
-          padding: EdgeInsets.all(16.w),
-          child: SalesSummaryBreakdownCard(controller: controller),
+        body: Obx(
+          () => RefreshIndicator(
+            onRefresh: controller.refreshActiveReport,
+            child: ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: EdgeInsets.all(16.w),
+              children: [
+                if (controller.isReportLoading.value)
+                  const LinearProgressIndicator(),
+                if (controller.reportError.value != null) ...[
+                  Text(
+                    controller.reportError.value!,
+                    textAlign: TextAlign.center,
+                  ),
+                  TextButton(
+                    onPressed: controller.refreshActiveReport,
+                    child: const Text('Try again'),
+                  ),
+                ] else
+                  SalesSummaryBreakdownCard(controller: controller),
+              ],
+            ),
+          ),
         ),
         bottomNavigationBar: DashboardBottomNav(controller: controller),
       ),

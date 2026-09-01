@@ -101,7 +101,8 @@ class _SalesTabView extends StatelessWidget {
                       ),
                       title: item.name,
                       subtitle: 'x ${item.quantity}',
-                      trailingText: '\$${wholeAmount.format(item.price)}',
+                      trailingText:
+                          '${controller.currencySymbol}${wholeAmount.format(item.price)}',
                     ),
                 ],
               ),
@@ -127,7 +128,8 @@ class _SalesTabView extends StatelessWidget {
                       ),
                       title: category.name,
                       subtitle: 'x ${category.quantity}',
-                      trailingText: '\$${wholeAmount.format(category.price)}',
+                      trailingText:
+                          '${controller.currencySymbol}${wholeAmount.format(category.price)}',
                     ),
                 ],
               ),
@@ -150,7 +152,7 @@ class _SalesTabView extends StatelessWidget {
                       title: employee.name,
                       subtitle: employee.posLabel,
                       trailingText:
-                          '\$${decimalAmount.format(employee.earnings)}',
+                          '${controller.currencySymbol}${decimalAmount.format(employee.earnings)}',
                     ),
                 ],
               ),
