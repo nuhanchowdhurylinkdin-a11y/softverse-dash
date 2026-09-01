@@ -1,9 +1,36 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:softverse_dash/core/models/response_data.dart';
+import 'package:softverse_dash/core/services/storage_service.dart';
 import 'package:softverse_dash/features/dashboard/controller/dashboard_controller.dart';
 import 'package:softverse_dash/features/dashboard/data/dashboard_repository.dart';
+import 'package:softverse_dash/features/dashboard/models/dashboard_item_model.dart';
 
 void main() {
+  test('dashboard starts without demo business data', () {
+    final controller = DashboardController(
+      dashboardRepository: _FakeDashboardRepository(),
+    );
+
+    expect(controller.stores.map((store) => store.name), ['All stores']);
+    expect(controller.categoryTabs, ['All Item']);
+    expect(controller.inventoryProducts, isEmpty);
+    expect(controller.totalNetSalesAmount.value, 0);
+    expect(controller.salesSummaryGrossSales.value, 0);
+    expect(controller.salesSummaryCostOfGoods.value, 0);
+    expect(controller.settingsAccountEmail, isNot('softvence@corp.com'));
+  });
+
+  test('settings displays the authenticated account email', () async {
+    SharedPreferences.setMockInitialValues({'email': 'owner@business.test'});
+    await StorageService.init();
+    final controller = DashboardController(
+      dashboardRepository: _FakeDashboardRepository(),
+    );
+
+    expect(controller.settingsAccountEmail, 'owner@business.test');
+  });
+
   test('dashboard state is populated from its injected repository', () async {
     final repository = _FakeDashboardRepository();
     final controller = DashboardController(dashboardRepository: repository);
@@ -17,11 +44,38 @@ void main() {
     expect(repository.employeeRanges, hasLength(1));
     expect(controller.transactions.value, 2);
     expect(controller.netSales.value, 270);
+    expect(controller.totalNetSalesAmount.value, 270);
     expect(controller.averageSale.value, 135);
     expect(controller.chartValues, [120, 150]);
     expect(controller.items.single.name, 'Chicken Fry');
     expect(controller.categories.single.name, 'Beverages');
     expect(controller.employees.single.name, 'Owner');
+  });
+
+  test('clears all account-owned in-memory state', () {
+    final controller = DashboardController(
+      dashboardRepository: _FakeDashboardRepository(),
+    );
+    controller.transactions.value = 3;
+    controller.netSales.value = 300;
+    controller.totalNetSalesAmount.value = 300;
+    controller.chartValues.value = [100, 200];
+    controller.items.add(
+      const DashboardItemModel(
+        name: 'Owned item',
+        quantity: 1,
+        price: 100,
+        imageUrl: '',
+      ),
+    );
+
+    controller.clearAccountState();
+
+    expect(controller.transactions.value, 0);
+    expect(controller.netSales.value, 0);
+    expect(controller.totalNetSalesAmount.value, 0);
+    expect(controller.chartValues, isEmpty);
+    expect(controller.items, isEmpty);
   });
 }
 
