@@ -77,15 +77,73 @@ void main() {
     expect(controller.chartValues, isEmpty);
     expect(controller.items, isEmpty);
   });
+
+  test(
+    'inventory filters are sent to the API and expiry data is retained',
+    () async {
+      final repository = _FakeDashboardRepository()
+        ..inventoryRows = [
+          {
+            'id': 'item-1',
+            'name': 'Milk',
+            'sku': 'MILK-1',
+            'barcode': 'BAR-1',
+            'price': 4,
+            'trackStock': true,
+            'inStock': 2,
+            'lowStock': 3,
+            'stockStatus': 'low_stock',
+            'trackExpiration': true,
+            'expirationDate': '2026-09-20',
+            'expirationStatus': 'expiring_soon',
+            'categoryName': 'Dairy',
+          },
+        ];
+      final controller = DashboardController(dashboardRepository: repository);
+
+      await controller.selectStockFilter(4);
+
+      expect(repository.lastExpirationStatus, 'expiring_soon');
+      expect(repository.lastExpiringSoonDays, 30);
+      expect(controller.inventoryProducts.single.expirationDate, isNotNull);
+      expect(controller.inventoryProducts.single.barcode, 'BAR-1');
+    },
+  );
+
+  test('selected real store is persisted and restored', () async {
+    SharedPreferences.setMockInitialValues({});
+    await StorageService.init();
+    final repository = _FakeDashboardRepository()
+      ..storeRows = [
+        {'id': 'store-1', 'name': 'Uptown', 'isActive': true},
+      ];
+    final controller = DashboardController(dashboardRepository: repository);
+
+    await controller.refreshStores();
+    await controller.selectStore(1);
+    expect(StorageService.selectedStoreId, 'store-1');
+
+    final restored = DashboardController(dashboardRepository: repository);
+    await restored.refreshStores();
+    expect(restored.selectedStore.id, 'store-1');
+  });
 }
 
 class _FakeDashboardRepository implements DashboardRepository {
   final overviewRanges = <(DateTime, DateTime)>[];
   final categoryRanges = <(DateTime, DateTime)>[];
   final employeeRanges = <(DateTime, DateTime)>[];
+  List<Map<String, dynamic>> inventoryRows = [];
+  List<Map<String, dynamic>> storeRows = [];
+  String? lastExpirationStatus;
+  int? lastExpiringSoonDays;
 
   @override
-  Future<ResponseData> fetchOverview(DateTime from, DateTime to) async {
+  Future<ResponseData> fetchOverview(
+    DateTime from,
+    DateTime to, {
+    String? storeId,
+  }) async {
     overviewRanges.add((from, to));
     final current = overviewRanges.length == 1;
     return _success({
@@ -114,7 +172,11 @@ class _FakeDashboardRepository implements DashboardRepository {
   }
 
   @override
-  Future<ResponseData> fetchCategorySales(DateTime from, DateTime to) async {
+  Future<ResponseData> fetchCategorySales(
+    DateTime from,
+    DateTime to, {
+    String? storeId,
+  }) async {
     categoryRanges.add((from, to));
     return _success({
       'rows': [
@@ -124,7 +186,11 @@ class _FakeDashboardRepository implements DashboardRepository {
   }
 
   @override
-  Future<ResponseData> fetchEmployeeSales(DateTime from, DateTime to) async {
+  Future<ResponseData> fetchEmployeeSales(
+    DateTime from,
+    DateTime to, {
+    String? storeId,
+  }) async {
     employeeRanges.add((from, to));
     return _success({
       'rows': [
@@ -136,6 +202,31 @@ class _FakeDashboardRepository implements DashboardRepository {
         },
       ],
     });
+  }
+
+  @override
+  Future<ResponseData> fetchIdentity() async => _success({
+    'user': {'email': 'owner@business.test', 'fullName': 'Owner'},
+  });
+
+  @override
+  Future<ResponseData> fetchStores() async => _success({'stores': storeRows});
+
+  @override
+  Future<ResponseData> fetchCategories() async => _success(<dynamic>[]);
+
+  @override
+  Future<ResponseData> fetchInventory({
+    String? storeId,
+    String? categoryId,
+    String? stockStatus,
+    String? expirationStatus,
+    int? expiringSoonDays,
+    String? search,
+  }) async {
+    lastExpirationStatus = expirationStatus;
+    lastExpiringSoonDays = expiringSoonDays;
+    return _success({'items': inventoryRows});
   }
 
   ResponseData _success(dynamic data) => ResponseData(

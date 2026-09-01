@@ -33,26 +33,54 @@ class InventoryTabView extends StatelessWidget {
               Expanded(
                 child: Obx(() {
                   final products = controller.filteredInventoryProducts;
-                  if (products.isEmpty) {
-                    return Center(
-                      child: Text(
-                        'No items found',
-                        style: getTextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w400,
-                          color: AppColors.textSecondary,
-                        ),
+                  if (controller.isInventoryLoading.value && products.isEmpty) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  if (controller.inventoryError.value != null &&
+                      products.isEmpty) {
+                    return RefreshIndicator(
+                      onRefresh: controller.refreshInventory,
+                      child: ListView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        children: [
+                          SizedBox(height: 180.h),
+                          Center(child: Text(controller.inventoryError.value!)),
+                        ],
                       ),
                     );
                   }
-                  return SingleChildScrollView(
-                    child: Column(
-                      children: [
-                        for (int i = 0; i < products.length; i++) ...[
-                          if (i > 0) SizedBox(height: 8.h),
-                          InventoryProductCard(product: products[i]),
+                  if (products.isEmpty) {
+                    return RefreshIndicator(
+                      onRefresh: controller.refreshInventory,
+                      child: ListView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        children: [
+                          SizedBox(height: 180.h),
+                          Center(
+                            child: Text(
+                              'No items found',
+                              style: getTextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w400,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                          ),
                         ],
-                      ],
+                      ),
+                    );
+                  }
+                  return RefreshIndicator(
+                    onRefresh: controller.refreshInventory,
+                    child: ListView.separated(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      itemCount: products.length,
+                      separatorBuilder: (_, _) => SizedBox(height: 8.h),
+                      itemBuilder: (_, i) => InventoryProductCard(
+                        product: products[i],
+                        onTap: () =>
+                            controller.openInventoryProduct(products[i]),
+                      ),
                     ),
                   );
                 }),
@@ -69,14 +97,16 @@ class InventoryTabView extends StatelessWidget {
                 icon: Iconsax.search_normal,
                 backgroundColor: AppColors.inventoryChipBg,
                 iconColor: AppColors.dashboardAccentBlue,
-                onTap: () {},
+                tooltip: 'Search inventory',
+                onTap: controller.openInventorySearch,
               ),
               SizedBox(height: 12.h),
               _FloatingIconButton(
                 icon: Iconsax.scan_barcode,
                 backgroundColor: AppColors.dashboardAccentBlue,
                 iconColor: Colors.white,
-                onTap: () {},
+                tooltip: 'Scan item barcode',
+                onTap: controller.openInventoryScanner,
               ),
             ],
           ),
@@ -91,26 +121,35 @@ class _FloatingIconButton extends StatelessWidget {
   final Color backgroundColor;
   final Color iconColor;
   final VoidCallback onTap;
+  final String tooltip;
 
   const _FloatingIconButton({
     required this.icon,
     required this.backgroundColor,
     required this.iconColor,
     required this.onTap,
+    required this.tooltip,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: backgroundColor,
-      shape: const CircleBorder(),
-      child: InkWell(
-        onTap: onTap,
-        customBorder: const CircleBorder(),
-        child: SizedBox(
-          width: 56.w,
-          height: 56.w,
-          child: Icon(icon, color: iconColor, size: 24.w),
+    return Semantics(
+      button: true,
+      label: tooltip,
+      child: Tooltip(
+        message: tooltip,
+        child: Material(
+          color: backgroundColor,
+          shape: const CircleBorder(),
+          child: InkWell(
+            onTap: onTap,
+            customBorder: const CircleBorder(),
+            child: SizedBox(
+              width: 56.w,
+              height: 56.w,
+              child: Icon(icon, color: iconColor, size: 24.w),
+            ),
+          ),
         ),
       ),
     );
