@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -7,6 +9,7 @@ import '../models/dashboard_item_model.dart';
 import '../models/inventory_product_model.dart';
 import '../models/store_model.dart';
 import '../data/dashboard_repository.dart';
+import '../widgets/inventory_product_details_sheet.dart';
 import '../../../core/services/network_caller.dart';
 import '../../../core/services/storage_service.dart';
 import '../../../core/utils/constants/api_constants.dart';
@@ -48,7 +51,7 @@ class DashboardController extends GetxController {
     end: selectedPeriodEnd.value,
   );
 
-  final stores = const [StoreModel(name: 'All stores')];
+  final stores = <StoreModel>[const StoreModel(name: 'All stores')].obs;
   final selectedStoreIndex = 0.obs;
 
   StoreModel get selectedStore => stores[selectedStoreIndex.value];
@@ -84,51 +87,54 @@ class DashboardController extends GetxController {
     'All Category',
     'Low Stock',
     'Out of Stock',
-    'Expire date',
+    'Expired',
+    'Expiring in 30 days',
   ];
   final selectedStockFilterIndex = 0.obs;
 
-  final categoryTabs = const ['All Item'];
+  final categoryTabs = <String>['All Item'].obs;
+  final categoryIds = <String?>[null].obs;
   final selectedCategoryTabIndex = 0.obs;
 
   final inventoryProducts = <InventoryProductModel>[].obs;
+  final isInventoryLoading = false.obs;
+  final inventoryError = RxnString();
+  final accountEmail = (StorageService.email ?? '').obs;
 
-  List<InventoryProductModel> get filteredInventoryProducts {
-    final selectedCategory = selectedCategoryTabIndex.value == 0
-        ? null
-        : categoryTabs[selectedCategoryTabIndex.value];
-
-    return inventoryProducts.where((product) {
-      final matchesCategory =
-          selectedCategory == null || product.category == selectedCategory;
-      final matchesStock = switch (selectedStockFilterIndex.value) {
-        1 => product.stockCount > 0 && product.stockCount < 10,
-        2 => product.stockCount <= 0,
-        _ => true,
-      };
-      return matchesCategory && matchesStock;
-    }).toList();
-  }
+  List<InventoryProductModel> get filteredInventoryProducts =>
+      inventoryProducts.toList(growable: false);
 
   final stockNotificationsEnabled = true.obs;
   final settingsSound = 'SIMToolkitPositiveACK';
-  String get settingsAccountEmail => StorageService.email ?? 'Not available';
+  String get settingsAccountEmail =>
+      accountEmail.value.isEmpty ? 'Not available' : accountEmail.value;
   final settingsIpAddress = 'Not available';
   final settingsAppVersion = '1.21';
 
   @override
   void onInit() {
     super.onInit();
+    unawaited(_loadIdentityAndStores());
     _fetchSalesOverview();
   }
 
   Future<void> refreshSalesOverview() => _fetchSalesOverview();
 
-  void selectNavIndex(int index) => selectedNavIndex.value = index;
+  void selectNavIndex(int index) {
+    selectedNavIndex.value = index;
+    if (index == 1) unawaited(refreshInventory());
+    if (index == 2) unawaited(refreshIdentity());
+  }
 
-  void selectStockFilter(int index) => selectedStockFilterIndex.value = index;
+  Future<void> selectStockFilter(int index) async {
+    selectedStockFilterIndex.value = index;
+    await refreshInventory();
+  }
 
-  void selectCategoryTab(int index) => selectedCategoryTabIndex.value = index;
+  Future<void> selectCategoryTab(int index) async {
+    selectedCategoryTabIndex.value = index;
+    await refreshInventory();
+  }
 
   void toggleStockNotifications() =>
       stockNotificationsEnabled.value = !stockNotificationsEnabled.value;
@@ -146,7 +152,12 @@ class DashboardController extends GetxController {
     Get.offAllNamed(AppRoute.getLoginScreen());
   }
 
-  void selectStore(int index) => selectedStoreIndex.value = index;
+  Future<void> selectStore(int index) async {
+    if (index < 0 || index >= stores.length) return;
+    selectedStoreIndex.value = index;
+    await StorageService.setSelectedStoreId(selectedStore.id);
+    await Future.wait([_fetchSalesOverview(), refreshInventory()]);
+  }
 
   void clearAccountState() {
     selectedStoreIndex.value = 0;
@@ -170,10 +181,145 @@ class DashboardController extends GetxController {
     items.clear();
     categories.clear();
     employees.clear();
+    stores.assignAll([const StoreModel(name: 'All stores')]);
+    categoryTabs.assignAll(['All Item']);
+    categoryIds.assignAll([null]);
     inventoryProducts.clear();
     selectedStockFilterIndex.value = 0;
     selectedCategoryTabIndex.value = 0;
+    inventoryError.value = null;
+    accountEmail.value = '';
   }
+
+  Future<void> _loadIdentityAndStores() async {
+    await Future.wait([
+      refreshIdentity(),
+      refreshStores(),
+      refreshCategories(),
+    ]);
+  }
+
+  Future<void> refreshIdentity() async {
+    final response = await _dashboardRepository.fetchIdentity();
+    if (!response.isSuccess || response.responseData is! Map) return;
+    final root = Map<String, dynamic>.from(response.responseData as Map);
+    final user = root['user'] is Map
+        ? Map<String, dynamic>.from(root['user'] as Map)
+        : root;
+    final email = user['email']?.toString().trim() ?? '';
+    final name =
+        user['fullName']?.toString().trim() ??
+        user['name']?.toString().trim() ??
+        '';
+    if (email.isEmpty) return;
+    accountEmail.value = email;
+    await StorageService.updateIdentity(fullName: name, email: email);
+  }
+
+  Future<void> refreshStores() async {
+    final response = await _dashboardRepository.fetchStores();
+    if (!response.isSuccess || response.responseData is! Map) return;
+    final data = Map<String, dynamic>.from(response.responseData as Map);
+    final activeStores = (data['stores'] as List? ?? const [])
+        .whereType<Map>()
+        .where((row) => row['isActive'] != false)
+        .map(
+          (row) => StoreModel(
+            id: row['id']?.toString(),
+            name: row['name']?.toString() ?? 'Unnamed store',
+          ),
+        )
+        .where((store) => store.id != null)
+        .toList();
+    final selectedId = StorageService.selectedStoreId ?? selectedStore.id;
+    selectedStoreIndex.value = 0;
+    stores.assignAll([const StoreModel(name: 'All stores'), ...activeStores]);
+    final nextIndex = stores.indexWhere((store) => store.id == selectedId);
+    selectedStoreIndex.value = nextIndex < 0 ? 0 : nextIndex;
+    if (nextIndex < 0 && selectedId != null) {
+      await StorageService.setSelectedStoreId(null);
+    }
+  }
+
+  Future<void> refreshCategories() async {
+    final response = await _dashboardRepository.fetchCategories();
+    if (!response.isSuccess || response.responseData is! List) return;
+    final rows = (response.responseData as List).whereType<Map>().toList();
+    categoryTabs.assignAll([
+      'All Item',
+      ...rows.map((row) => row['name']?.toString() ?? 'Unnamed category'),
+    ]);
+    categoryIds.assignAll([null, ...rows.map((row) => row['id']?.toString())]);
+    if (selectedCategoryTabIndex.value >= categoryTabs.length) {
+      selectedCategoryTabIndex.value = 0;
+    }
+  }
+
+  Future<void> refreshInventory({String? search}) async {
+    isInventoryLoading.value = true;
+    inventoryError.value = null;
+    final stockIndex = selectedStockFilterIndex.value;
+    final response = await _dashboardRepository.fetchInventory(
+      storeId: selectedStore.id,
+      categoryId: selectedCategoryTabIndex.value < categoryIds.length
+          ? categoryIds[selectedCategoryTabIndex.value]
+          : null,
+      stockStatus: switch (stockIndex) {
+        1 => 'low_stock',
+        2 => 'out_of_stock',
+        _ => null,
+      },
+      expirationStatus: switch (stockIndex) {
+        3 => 'expired',
+        4 => 'expiring_soon',
+        _ => null,
+      },
+      expiringSoonDays: stockIndex == 4 ? 30 : null,
+      search: search,
+    );
+    isInventoryLoading.value = false;
+    if (!response.isSuccess || response.responseData is! Map) {
+      inventoryError.value = response.errorMessage.isEmpty
+          ? 'Unable to load inventory.'
+          : response.errorMessage;
+      return;
+    }
+    final data = Map<String, dynamic>.from(response.responseData as Map);
+    final products = (data['items'] as List? ?? const [])
+        .whereType<Map>()
+        .map(
+          (row) =>
+              InventoryProductModel.fromApi(Map<String, dynamic>.from(row)),
+        )
+        .where((item) => stockIndex < 3 || item.expirationDate != null)
+        .toList();
+    inventoryProducts.assignAll(products);
+  }
+
+  Future<void> openInventorySearch() async {
+    selectedStockFilterIndex.value = 0;
+    selectedCategoryTabIndex.value = 0;
+    await Get.toNamed<void>(AppRoute.getInventorySearchScreen());
+    await refreshInventory();
+  }
+
+  Future<void> openInventoryScanner() async {
+    final barcode = await Get.toNamed<String>(AppRoute.getScanBarcodeScreen());
+    if (barcode == null || barcode.isEmpty) return;
+    selectedStockFilterIndex.value = 0;
+    selectedCategoryTabIndex.value = 0;
+    await refreshInventory(search: barcode);
+    if (inventoryProducts.isEmpty) {
+      AppHelperFunctions.showWarningSnackBar(
+        'No item found for barcode $barcode.',
+      );
+      return;
+    }
+    showInventoryProductDetails(inventoryProducts.first);
+  }
+
+  void openInventoryProduct(InventoryProductModel product) =>
+      showInventoryProductDetails(product);
 
   void goToPreviousDay() => _shiftSelectedPeriod(isForward: false);
 
@@ -222,12 +368,17 @@ class DashboardController extends GetxController {
       final periodDays = to.difference(from).inDays + 1;
       final previousTo = from.subtract(const Duration(days: 1));
       final previousFrom = previousTo.subtract(Duration(days: periodDays - 1));
+      final storeId = selectedStore.id;
 
       final responses = await Future.wait([
-        _dashboardRepository.fetchOverview(from, to),
-        _dashboardRepository.fetchOverview(previousFrom, previousTo),
-        _dashboardRepository.fetchCategorySales(from, to),
-        _dashboardRepository.fetchEmployeeSales(from, to),
+        _dashboardRepository.fetchOverview(from, to, storeId: storeId),
+        _dashboardRepository.fetchOverview(
+          previousFrom,
+          previousTo,
+          storeId: storeId,
+        ),
+        _dashboardRepository.fetchCategorySales(from, to, storeId: storeId),
+        _dashboardRepository.fetchEmployeeSales(from, to, storeId: storeId),
       ]);
 
       final current = responses[0];
