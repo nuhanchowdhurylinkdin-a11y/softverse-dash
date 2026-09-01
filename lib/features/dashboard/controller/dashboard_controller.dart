@@ -48,11 +48,7 @@ class DashboardController extends GetxController {
     end: selectedPeriodEnd.value,
   );
 
-  final stores = const [
-    StoreModel(name: 'Downtown'),
-    StoreModel(name: 'Mall Branch'),
-    StoreModel(name: 'Airport'),
-  ];
+  final stores = const [StoreModel(name: 'All stores')];
   final selectedStoreIndex = 0.obs;
 
   StoreModel get selectedStore => stores[selectedStoreIndex.value];
@@ -66,16 +62,16 @@ class DashboardController extends GetxController {
   final averageSale = 0.0.obs;
   final averageSaleChange = 0.0.obs;
 
-  final totalNetSalesAmount = 17510.00.obs;
+  final totalNetSalesAmount = 0.0.obs;
 
-  final salesSummaryGrossSales = 5760.00.obs;
-  final salesSummaryRefunds = 0.00.obs;
-  final salesSummaryDiscounts = 0.00.obs;
-  final salesSummaryNetSales = 5760.00.obs;
-  final salesSummaryTaxes = 0.00.obs;
-  final salesSummaryTotalTendered = 5760.00.obs;
-  final salesSummaryCostOfGoods = 5115.20.obs;
-  final salesSummaryGrossProfit = 644.80.obs;
+  final salesSummaryGrossSales = 0.0.obs;
+  final salesSummaryRefunds = 0.0.obs;
+  final salesSummaryDiscounts = 0.0.obs;
+  final salesSummaryNetSales = 0.0.obs;
+  final salesSummaryTaxes = 0.0.obs;
+  final salesSummaryTotalTendered = 0.0.obs;
+  final salesSummaryCostOfGoods = 0.0.obs;
+  final salesSummaryGrossProfit = 0.0.obs;
 
   final chartValues = <double>[].obs;
   final chartMaxValue = 10000.0.obs;
@@ -92,88 +88,10 @@ class DashboardController extends GetxController {
   ];
   final selectedStockFilterIndex = 0.obs;
 
-  final categoryTabs = const [
-    'All Item',
-    'PC Components',
-    'Monitor & Display',
-    'Input Devices',
-    'Audio',
-    'Gaming Accessories',
-    'Networking',
-    'Laptop & Accessories',
-    'Storage Devices',
-    'Printers & Office',
-    'Cables & Adapters',
-    'Software & Licenses',
-  ];
+  final categoryTabs = const ['All Item'];
   final selectedCategoryTabIndex = 0.obs;
 
-  final inventoryProducts = const [
-    InventoryProductModel(
-      name: 'A4Ttech Keyboard',
-      sku: 'SKU-10012',
-      price: 800,
-      imageUrl: 'https://picsum.photos/seed/a4tech-keyboard-1/200',
-      stockCount: 97,
-      category: 'PC Components',
-    ),
-    InventoryProductModel(
-      name: 'A4Ttech Keyboard',
-      sku: 'SKU-10012',
-      price: 800,
-      imageUrl: 'https://picsum.photos/seed/a4tech-keyboard-2/200',
-      stockCount: 9,
-      category: 'PC Components',
-    ),
-    InventoryProductModel(
-      name: 'A4Ttech Mouse',
-      sku: 'SKU-10012',
-      price: 400,
-      imageUrl: 'https://picsum.photos/seed/a4tech-mouse-1/200',
-      stockCount: 97,
-      category: 'PC Components',
-    ),
-    InventoryProductModel(
-      name: 'A4Ttech Mouse',
-      sku: 'SKU-10012',
-      price: 400,
-      imageUrl: 'https://picsum.photos/seed/a4tech-mouse-2/200',
-      stockCount: 97,
-      category: 'PC Components',
-    ),
-    InventoryProductModel(
-      name: 'HP Monitor',
-      sku: 'SKU-10012',
-      price: 18000,
-      imageUrl: 'https://picsum.photos/seed/hp-monitor-1/200',
-      stockCount: 7,
-      category: 'Monitor & Display',
-    ),
-    InventoryProductModel(
-      name: 'HP Monitor',
-      sku: 'SKU-10012',
-      price: 18000,
-      imageUrl: 'https://picsum.photos/seed/hp-monitor-2/200',
-      stockCount: 0,
-      category: 'Monitor & Display',
-    ),
-    InventoryProductModel(
-      name: 'HP Monitor',
-      sku: 'SKU-10012',
-      price: 18000,
-      imageUrl: 'https://picsum.photos/seed/hp-monitor-3/200',
-      stockCount: 97,
-      category: 'Monitor & Display',
-    ),
-    InventoryProductModel(
-      name: 'HP Monitor',
-      sku: 'SKU-10012',
-      price: 18000,
-      imageUrl: 'https://picsum.photos/seed/hp-monitor-4/200',
-      stockCount: 0,
-      category: 'Monitor & Display',
-    ),
-  ];
+  final inventoryProducts = <InventoryProductModel>[].obs;
 
   List<InventoryProductModel> get filteredInventoryProducts {
     final selectedCategory = selectedCategoryTabIndex.value == 0
@@ -194,8 +112,8 @@ class DashboardController extends GetxController {
 
   final stockNotificationsEnabled = true.obs;
   final settingsSound = 'SIMToolkitPositiveACK';
-  final settingsAccountEmail = 'softvence@corp.com';
-  final settingsIpAddress = '192.152.11.145';
+  String get settingsAccountEmail => StorageService.email ?? 'Not available';
+  final settingsIpAddress = 'Not available';
   final settingsAppVersion = '1.21';
 
   @override
@@ -223,11 +141,39 @@ class DashboardController extends GetxController {
         body: {'refreshToken': refreshToken},
       );
     }
+    clearAccountState();
     await StorageService.logoutUser();
     Get.offAllNamed(AppRoute.getLoginScreen());
   }
 
   void selectStore(int index) => selectedStoreIndex.value = index;
+
+  void clearAccountState() {
+    selectedStoreIndex.value = 0;
+    transactions.value = 0;
+    transactionsChange.value = 0;
+    netSales.value = 0;
+    netSalesChange.value = 0;
+    averageSale.value = 0;
+    averageSaleChange.value = 0;
+    totalNetSalesAmount.value = 0;
+    salesSummaryGrossSales.value = 0;
+    salesSummaryRefunds.value = 0;
+    salesSummaryDiscounts.value = 0;
+    salesSummaryNetSales.value = 0;
+    salesSummaryTaxes.value = 0;
+    salesSummaryTotalTendered.value = 0;
+    salesSummaryCostOfGoods.value = 0;
+    salesSummaryGrossProfit.value = 0;
+    chartValues.clear();
+    chartMaxValue.value = 10000;
+    items.clear();
+    categories.clear();
+    employees.clear();
+    inventoryProducts.clear();
+    selectedStockFilterIndex.value = 0;
+    selectedCategoryTabIndex.value = 0;
+  }
 
   void goToPreviousDay() => _shiftSelectedPeriod(isForward: false);
 
@@ -319,6 +265,7 @@ class DashboardController extends GetxController {
     final cards = Map<String, dynamic>.from(data['cards'] as Map);
     transactions.value = (cards['transactionCount'] as num?)?.toInt() ?? 0;
     netSales.value = (cards['netSales'] as num?)?.toDouble() ?? 0;
+    totalNetSalesAmount.value = netSales.value;
     averageSale.value = (cards['averageSale'] as num?)?.toDouble() ?? 0;
 
     final chart = (data['chart'] as List? ?? const []).map((point) {

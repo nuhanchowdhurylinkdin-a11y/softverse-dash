@@ -81,7 +81,7 @@ class StoreSwitcher extends StatelessWidget {
               Padding(
                 padding: EdgeInsets.fromLTRB(16.w, 0, 16.w, 8.h),
                 child: Text(
-                  'Softvence stores',
+                  'Available stores',
                   style: getTextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w400,
@@ -97,10 +97,17 @@ class StoreSwitcher extends StatelessWidget {
                       Navigator.pop(context);
                     },
                     child: Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 16.w,
+                        vertical: 14.h,
+                      ),
                       child: Row(
                         children: [
-                          Icon(Iconsax.shop, color: AppColors.dashboardAccentBlue, size: 20.w),
+                          Icon(
+                            Iconsax.shop,
+                            color: AppColors.dashboardAccentBlue,
+                            size: 20.w,
+                          ),
                           SizedBox(width: 12.w),
                           Expanded(
                             child: Text(
@@ -113,7 +120,11 @@ class StoreSwitcher extends StatelessWidget {
                             ),
                           ),
                           if (controller.selectedStoreIndex.value == i)
-                            Icon(Icons.check_circle, color: AppColors.dashboardAccentBlue, size: 20.w),
+                            Icon(
+                              Icons.check_circle,
+                              color: AppColors.dashboardAccentBlue,
+                              size: 20.w,
+                            ),
                         ],
                       ),
                     ),
