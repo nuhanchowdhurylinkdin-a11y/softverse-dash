@@ -35,6 +35,36 @@ abstract interface class DashboardRepository {
     int? expiringSoonDays,
     String? search,
   });
+
+  Future<ResponseData> fetchItemSales(
+    DateTime from,
+    DateTime to, {
+    String? storeId,
+    int limit = 20,
+    int offset = 0,
+  });
+
+  Future<ResponseData> fetchSalesSummary(
+    DateTime from,
+    DateTime to, {
+    String? storeId,
+  });
+
+  Future<ResponseData> fetchCategorySalesPage(
+    DateTime from,
+    DateTime to, {
+    String? storeId,
+    int limit = 20,
+    int offset = 0,
+  });
+
+  Future<ResponseData> fetchEmployeeSalesPage(
+    DateTime from,
+    DateTime to, {
+    String? storeId,
+    int limit = 20,
+    int offset = 0,
+  });
 }
 
 class HttpDashboardRepository implements DashboardRepository {
@@ -107,6 +137,69 @@ class HttpDashboardRepository implements DashboardRepository {
     );
   }
 
+  @override
+  Future<ResponseData> fetchItemSales(
+    DateTime from,
+    DateTime to, {
+    String? storeId,
+    int limit = 20,
+    int offset = 0,
+  }) => _networkCaller.getRequest(
+    _reportUrl(
+      ApiConstants.itemSales,
+      from,
+      to,
+      storeId: storeId,
+      limit: limit,
+      offset: offset,
+    ),
+  );
+
+  @override
+  Future<ResponseData> fetchSalesSummary(
+    DateTime from,
+    DateTime to, {
+    String? storeId,
+  }) => _networkCaller.getRequest(
+    _reportUrl(ApiConstants.salesSummary, from, to, storeId: storeId),
+  );
+
+  @override
+  Future<ResponseData> fetchCategorySalesPage(
+    DateTime from,
+    DateTime to, {
+    String? storeId,
+    int limit = 20,
+    int offset = 0,
+  }) => _networkCaller.getRequest(
+    _reportUrl(
+      ApiConstants.categorySales,
+      from,
+      to,
+      storeId: storeId,
+      limit: limit,
+      offset: offset,
+    ),
+  );
+
+  @override
+  Future<ResponseData> fetchEmployeeSalesPage(
+    DateTime from,
+    DateTime to, {
+    String? storeId,
+    int limit = 20,
+    int offset = 0,
+  }) => _networkCaller.getRequest(
+    _reportUrl(
+      ApiConstants.employeeSales,
+      from,
+      to,
+      storeId: storeId,
+      limit: limit,
+      offset: offset,
+    ),
+  );
+
   String _dateRangeUrl(
     String base,
     DateTime from,
@@ -123,6 +216,25 @@ class HttpDashboardRepository implements DashboardRepository {
         )
         .toString();
   }
+
+  String _reportUrl(
+    String base,
+    DateTime from,
+    DateTime to, {
+    String? storeId,
+    int? limit,
+    int? offset,
+  }) => Uri.parse(base)
+      .replace(
+        queryParameters: {
+          'from': _isoDate(from),
+          'to': _isoDate(to),
+          'storeId': ?storeId,
+          if (limit != null) 'limit': '$limit',
+          if (offset != null) 'offset': '$offset',
+        },
+      )
+      .toString();
 
   String _isoDate(DateTime date) =>
       '${date.year.toString().padLeft(4, '0')}-'
