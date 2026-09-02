@@ -337,17 +337,29 @@ class DashboardController extends GetxController {
 
   Future<void> openInventoryScanner() async {
     final barcode = await Get.toNamed<String>(AppRoute.getScanBarcodeScreen());
-    if (barcode == null || barcode.isEmpty) return;
+    if (barcode == null || barcode.trim().isEmpty) return;
+    final normalizedBarcode = barcode.trim();
     selectedStockFilterIndex.value = 0;
     selectedCategoryTabIndex.value = 0;
-    await refreshInventory(search: barcode);
-    if (inventoryProducts.isEmpty) {
+    final previousProducts = inventoryProducts.toList(growable: false);
+    await refreshInventory(search: normalizedBarcode);
+    final product = findInventoryProductByBarcode(normalizedBarcode);
+    inventoryProducts.assignAll(previousProducts);
+    if (product == null) {
       AppHelperFunctions.showWarningSnackBar(
-        'No item found for barcode $barcode.',
+        'No item found for barcode $normalizedBarcode.',
       );
       return;
     }
-    showInventoryProductDetails(inventoryProducts.first);
+    showInventoryProductDetails(product);
+  }
+
+  InventoryProductModel? findInventoryProductByBarcode(String barcode) {
+    final normalized = barcode.trim().toLowerCase();
+    if (normalized.isEmpty) return null;
+    return inventoryProducts.firstWhereOrNull(
+      (product) => product.barcode.trim().toLowerCase() == normalized,
+    );
   }
 
   void openInventoryProduct(InventoryProductModel product) =>
