@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:iconsax_flutter/iconsax_flutter.dart';
 import 'package:skeletonizer/skeletonizer.dart';
 
+import '../../utils/constants/api_constants.dart';
+
 class AppNetworkImage extends StatelessWidget {
   final String url;
   final double width;
@@ -22,29 +24,38 @@ class AppNetworkImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final resolvedUrl = ApiConstants.resolveAssetUrl(url);
     return ClipRRect(
       borderRadius: borderRadius,
-      child: Image.network(
-        url,
-        width: width,
-        height: height,
-        fit: fit,
-        loadingBuilder: (context, child, progress) {
-          if (progress == null) return child;
-          return Skeletonizer(
-            child: Container(width: width, height: height, color: backgroundColor),
-          );
-        },
-        errorBuilder: (context, error, stackTrace) {
-          return Container(
-            width: width,
-            height: height,
-            color: backgroundColor,
-            alignment: Alignment.center,
-            child: Icon(Iconsax.gallery_slash, color: Colors.grey, size: width * 0.4),
-          );
-        },
-      ),
+      child: resolvedUrl.isEmpty
+          ? _errorPlaceholder()
+          : Image.network(
+              resolvedUrl,
+              width: width,
+              height: height,
+              fit: fit,
+              loadingBuilder: (context, child, progress) {
+                if (progress == null) return child;
+                return Skeletonizer(
+                  child: Container(
+                    width: width,
+                    height: height,
+                    color: backgroundColor,
+                  ),
+                );
+              },
+              errorBuilder: (context, error, stackTrace) {
+                return _errorPlaceholder();
+              },
+            ),
     );
   }
+
+  Widget _errorPlaceholder() => Container(
+    width: width,
+    height: height,
+    color: backgroundColor,
+    alignment: Alignment.center,
+    child: Icon(Iconsax.gallery_slash, color: Colors.grey, size: width * 0.4),
+  );
 }
