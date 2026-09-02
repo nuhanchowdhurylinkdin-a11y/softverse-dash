@@ -29,12 +29,26 @@ class ScanBarcodeScreen extends GetView<ScanBarcodeController> {
         errorBuilder: (_, error) => Center(
           child: Padding(
             padding: const EdgeInsets.all(24),
-            child: Text(
-              error.errorCode == MobileScannerErrorCode.permissionDenied
-                  ? 'Camera permission was denied. Allow camera access in device settings and try again.'
-                  : 'Camera is unavailable. Please try again.',
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.white),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  error.errorCode == MobileScannerErrorCode.permissionDenied
+                      ? 'Camera permission was denied. Allow camera access in device settings and try again.'
+                      : 'Camera is unavailable. Please try again.',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: Colors.white),
+                ),
+                const SizedBox(height: 16),
+                OutlinedButton.icon(
+                  onPressed: controller.retryCamera,
+                  icon: const Icon(Icons.refresh),
+                  label: const Text('Try Again'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.white,
+                  ),
+                ),
+              ],
             ),
           ),
         ),

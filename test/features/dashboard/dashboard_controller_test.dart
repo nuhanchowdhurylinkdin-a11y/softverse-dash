@@ -199,6 +199,11 @@ void main() {
     await controller.openReport(SalesReportKind.summary);
 
     expect(controller.currencySymbol, r'$');
+
+    controller.currencyCode.value = 'Dollar';
+    expect(controller.currencySymbol, r'$');
+    controller.currencyCode.value = 'Taka';
+    expect(controller.currencySymbol, '৳');
     expect(controller.salesSummaryNetSales.value, 85);
     expect(controller.salesSummaryTotalTendered.value, 93.5);
     expect(controller.salesSummaryCostOfGoods.value, 40);
