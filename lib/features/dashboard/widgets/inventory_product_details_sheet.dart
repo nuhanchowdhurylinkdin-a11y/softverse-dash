@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 
+import '../../../core/utils/constants/api_constants.dart';
 import '../models/inventory_product_model.dart';
 
 void showInventoryProductDetails(InventoryProductModel product) {
@@ -18,6 +19,19 @@ void showInventoryProductDetails(InventoryProductModel product) {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            if (product.imageUrl.trim().isNotEmpty) ...[
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Image.network(
+                  ApiConstants.resolveAssetUrl(product.imageUrl),
+                  width: double.infinity,
+                  height: 160,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, _, _) => const SizedBox.shrink(),
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
             Text(
               product.name,
               style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
@@ -28,6 +42,7 @@ void showInventoryProductDetails(InventoryProductModel product) {
               'Barcode: ${product.barcode.isEmpty ? 'Not available' : product.barcode}',
             ),
             Text('Category: ${product.category}'),
+            Text('Price: ${product.price.toStringAsFixed(2)}'),
             Text(
               'Stock: ${product.trackStock ? product.stockCount : 'Not tracked'}',
             ),

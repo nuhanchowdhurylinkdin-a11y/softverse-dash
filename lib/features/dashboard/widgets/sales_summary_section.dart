@@ -62,7 +62,8 @@ class SalesSummarySection extends StatelessWidget {
               ],
               valueBuilder: () => Obx(
                 () => Text(
-                  '${controller.currencySymbol}${controller.netSales.value.toStringAsFixed(2)}',
+                  controller.money(controller.netSales.value),
+                  maxLines: 1,
                   style: getTextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.w500,
@@ -84,7 +85,8 @@ class SalesSummarySection extends StatelessWidget {
               ],
               valueBuilder: () => Obx(
                 () => Text(
-                  '${controller.currencySymbol}${controller.averageSale.value.toStringAsFixed(2)}',
+                  controller.money(controller.averageSale.value),
+                  maxLines: 1,
                   style: getTextStyle(
                     fontSize: 17,
                     fontWeight: FontWeight.w500,

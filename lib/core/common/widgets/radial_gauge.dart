@@ -39,7 +39,14 @@ class RadialGauge extends StatelessWidget {
               strokeWidth: strokeWidth,
             ),
           ),
-          ?center,
+          if (center != null)
+            Padding(
+              padding: EdgeInsets.all(strokeWidth * 1.6),
+              child: SizedBox(
+                width: size - (strokeWidth * 4),
+                child: FittedBox(fit: BoxFit.scaleDown, child: center!),
+              ),
+            ),
         ],
       ),
     );

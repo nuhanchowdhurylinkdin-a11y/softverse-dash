@@ -89,15 +89,16 @@ class DashboardController extends GetxController {
   final currencyCode = ''.obs;
   static const reportPageSize = 20;
 
-  String get currencySymbol => switch (currencyCode.value.toUpperCase()) {
-    'USD' => r'$',
-    'EUR' => '€',
-    'GBP' => '£',
-    'BDT' => '৳',
-    'INR' => '₹',
-    final code when code.isNotEmpty => '$code ',
-    _ => '',
-  };
+  String get currencySymbol =>
+      switch (currencyCode.value.trim().toUpperCase()) {
+        'USD' || 'DOLLAR' || 'US DOLLAR' => r'$',
+        'EUR' || 'EURO' => '€',
+        'GBP' || 'POUND' || 'POUND STERLING' => '£',
+        'BDT' || 'TAKA' || 'BANGLADESHI TAKA' => '৳',
+        'INR' || 'RUPEE' || 'INDIAN RUPEE' => '₹',
+        final code when code.isNotEmpty => '$code ',
+        _ => '',
+      };
 
   String money(num value, {int decimals = 2}) =>
       '$currencySymbol${value.toStringAsFixed(decimals)}';
@@ -336,18 +337,30 @@ class DashboardController extends GetxController {
   }
 
   Future<void> openInventoryScanner() async {
-    final barcode = await Get.toNamed<String>(AppRoute.getScanBarcodeScreen());
-    if (barcode == null || barcode.isEmpty) return;
+    final result = await Get.toNamed(AppRoute.getScanBarcodeScreen());
+    if (result is! String || result.trim().isEmpty) return;
+    final normalizedBarcode = result.trim();
     selectedStockFilterIndex.value = 0;
     selectedCategoryTabIndex.value = 0;
-    await refreshInventory(search: barcode);
-    if (inventoryProducts.isEmpty) {
+    final previousProducts = inventoryProducts.toList(growable: false);
+    await refreshInventory(search: normalizedBarcode);
+    final product = findInventoryProductByBarcode(normalizedBarcode);
+    inventoryProducts.assignAll(previousProducts);
+    if (product == null) {
       AppHelperFunctions.showWarningSnackBar(
-        'No item found for barcode $barcode.',
+        'No item found for barcode $normalizedBarcode.',
       );
       return;
     }
-    showInventoryProductDetails(inventoryProducts.first);
+    showInventoryProductDetails(product);
+  }
+
+  InventoryProductModel? findInventoryProductByBarcode(String barcode) {
+    final normalized = barcode.trim().toLowerCase();
+    if (normalized.isEmpty) return null;
+    return inventoryProducts.firstWhereOrNull(
+      (product) => product.barcode.trim().toLowerCase() == normalized,
+    );
   }
 
   void openInventoryProduct(InventoryProductModel product) =>

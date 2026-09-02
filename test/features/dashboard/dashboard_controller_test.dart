@@ -1,10 +1,12 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:get/get.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:softverse_dash/core/models/response_data.dart';
 import 'package:softverse_dash/core/services/storage_service.dart';
 import 'package:softverse_dash/features/dashboard/controller/dashboard_controller.dart';
 import 'package:softverse_dash/features/dashboard/data/dashboard_repository.dart';
 import 'package:softverse_dash/features/dashboard/models/dashboard_item_model.dart';
+import 'package:softverse_dash/features/dashboard/models/inventory_product_model.dart';
 
 void main() {
   test('dashboard starts without demo business data', () {
@@ -110,6 +112,29 @@ void main() {
     },
   );
 
+  test('dashboard scanner lookup requires an exact barcode match', () {
+    final controller = DashboardController(
+      dashboardRepository: _FakeDashboardRepository(),
+    );
+    controller.inventoryProducts.assignAll([
+      InventoryProductModel.fromApi({
+        'id': 'wrong',
+        'name': 'BAR-10 promotional item',
+        'barcode': 'BAR-100',
+      }),
+      InventoryProductModel.fromApi({
+        'id': 'exact',
+        'name': 'Microwave',
+        'barcode': 'BAR-10',
+      }),
+    ]);
+
+    final product = controller.findInventoryProductByBarcode(' bar-10 ');
+
+    expect(product?.id, 'exact');
+    expect(controller.findInventoryProductByBarcode('BAR'), isNull);
+  });
+
   test('selected real store is persisted and restored', () async {
     SharedPreferences.setMockInitialValues({});
     await StorageService.init();
@@ -174,6 +199,11 @@ void main() {
     await controller.openReport(SalesReportKind.summary);
 
     expect(controller.currencySymbol, r'$');
+
+    controller.currencyCode.value = 'Dollar';
+    expect(controller.currencySymbol, r'$');
+    controller.currencyCode.value = 'Taka';
+    expect(controller.currencySymbol, '৳');
     expect(controller.salesSummaryNetSales.value, 85);
     expect(controller.salesSummaryTotalTendered.value, 93.5);
     expect(controller.salesSummaryCostOfGoods.value, 40);
