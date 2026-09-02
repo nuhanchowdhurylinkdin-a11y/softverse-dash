@@ -337,9 +337,9 @@ class DashboardController extends GetxController {
   }
 
   Future<void> openInventoryScanner() async {
-    final barcode = await Get.toNamed<String>(AppRoute.getScanBarcodeScreen());
-    if (barcode == null || barcode.trim().isEmpty) return;
-    final normalizedBarcode = barcode.trim();
+    final result = await Get.toNamed(AppRoute.getScanBarcodeScreen());
+    if (result is! String || result.trim().isEmpty) return;
+    final normalizedBarcode = result.trim();
     selectedStockFilterIndex.value = 0;
     selectedCategoryTabIndex.value = 0;
     final previousProducts = inventoryProducts.toList(growable: false);
