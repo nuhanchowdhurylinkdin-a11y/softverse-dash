@@ -73,6 +73,13 @@ class SalesSummaryBreakdownCard extends StatelessWidget {
             value: controller.salesSummaryTotalTendered.value,
             emphasize: true,
           ),
+          SizedBox(height: 8.h),
+          _SummaryRow(
+            label:
+                'Due invoices (${controller.salesSummaryDueInvoices.value})',
+            value: controller.salesSummaryAmountDue.value,
+            boldValue: true,
+          ),
           SizedBox(height: 10.h),
           const DashedDivider(),
           SizedBox(height: 10.h),
