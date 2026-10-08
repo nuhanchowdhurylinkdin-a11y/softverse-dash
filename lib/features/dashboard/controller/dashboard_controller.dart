@@ -76,6 +76,10 @@ class DashboardController extends GetxController {
   final salesSummaryNetSales = 0.0.obs;
   final salesSummaryTaxes = 0.0.obs;
   final salesSummaryTotalTendered = 0.0.obs;
+
+  /// Unpaid credit (due/installment) sales in the selected period.
+  final salesSummaryDueInvoices = 0.obs;
+  final salesSummaryAmountDue = 0.0.obs;
   final salesSummaryCostOfGoods = 0.0.obs;
   final salesSummaryGrossProfit = 0.0.obs;
   final reportItems = <ItemSalesReportRow>[].obs;
@@ -205,6 +209,8 @@ class DashboardController extends GetxController {
     salesSummaryNetSales.value = 0;
     salesSummaryTaxes.value = 0;
     salesSummaryTotalTendered.value = 0;
+    salesSummaryDueInvoices.value = 0;
+    salesSummaryAmountDue.value = 0;
     salesSummaryCostOfGoods.value = 0;
     salesSummaryGrossProfit.value = 0;
     _clearReportState();
@@ -508,6 +514,10 @@ class DashboardController extends GetxController {
           (totals['discounts'] as num?)?.toDouble() ?? 0;
       salesSummaryNetSales.value = reportNetSales.value;
       salesSummaryTaxes.value = (totals['taxes'] as num?)?.toDouble() ?? 0;
+      salesSummaryDueInvoices.value =
+          (totals['dueInvoices'] as num?)?.toInt() ?? 0;
+      salesSummaryAmountDue.value =
+          (totals['amountDue'] as num?)?.toDouble() ?? 0;
       salesSummaryTotalTendered.value =
           (totals['totalTendered'] as num?)?.toDouble() ?? 0;
       salesSummaryCostOfGoods.value =
@@ -529,6 +539,8 @@ class DashboardController extends GetxController {
     salesSummaryNetSales.value = 0;
     salesSummaryTaxes.value = 0;
     salesSummaryTotalTendered.value = 0;
+    salesSummaryDueInvoices.value = 0;
+    salesSummaryAmountDue.value = 0;
     salesSummaryCostOfGoods.value = 0;
     salesSummaryGrossProfit.value = 0;
   }
