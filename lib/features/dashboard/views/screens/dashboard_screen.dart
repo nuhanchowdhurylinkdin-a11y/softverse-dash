@@ -11,6 +11,7 @@ import '../../controller/dashboard_controller.dart';
 import '../../widgets/dashboard_app_bar.dart';
 import '../../widgets/dashboard_bottom_nav.dart';
 import '../../widgets/dashboard_list_section.dart';
+import '../../widgets/debt_tab_view.dart';
 import '../../widgets/inventory_tab_view.dart';
 import '../../widgets/sales_bar_chart.dart';
 import '../../widgets/sales_summary_section.dart';
@@ -36,8 +37,13 @@ class DashboardScreen extends GetView<DashboardController> {
             selectedIndex: navIndex,
           ),
           body: switch (navIndex) {
-            1 => InventoryTabView(controller: controller),
-            2 => SettingsTabView(controller: controller),
+            DashboardController.inventoryTab => InventoryTabView(
+              controller: controller,
+            ),
+            DashboardController.debtTab => DebtTabView(controller: controller),
+            DashboardController.settingsTab => SettingsTabView(
+              controller: controller,
+            ),
             _ => _SalesTabView(
               controller: controller,
               wholeAmount: _wholeAmount,

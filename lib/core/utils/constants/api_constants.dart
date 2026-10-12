@@ -24,6 +24,7 @@ class ApiConstants {
   static String get employeeSales => '$baseUrl/reports/employee-sales';
   static String get itemSales => '$baseUrl/reports/item-sales';
   static String get salesSummary => '$baseUrl/reports/sales-summary';
+  static String get dueInvoices => '$baseUrl/reports/due-invoices';
 
   static String resolveAssetUrl(String? url) {
     if (url == null || url.trim().isEmpty) return '';

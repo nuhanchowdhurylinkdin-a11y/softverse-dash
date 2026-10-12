@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -214,7 +216,91 @@ void main() {
       controller.salesSummaryNetSales.value,
     );
   });
+
+  test('debt tab lists unpaid invoices for the selected store', () async {
+    final repository = _FakeDashboardRepository()
+      ..storeRows = [
+        {'id': 'store-1', 'name': 'Uptown', 'isActive': true},
+      ]
+      ..dueInvoiceRows = [
+        {
+          'checkoutOrderId': 'order-1',
+          'orderNumber': '1001',
+          'date': '2026-10-01T10:00:00.000Z',
+          'customerName': 'Karim',
+          'storeName': 'Uptown',
+          'employeeName': 'Rina',
+          'totalAmount': 40,
+          'amountReceived': 15,
+          'amountDue': 25,
+        },
+        {
+          'checkoutOrderId': 'order-2',
+          'orderNumber': '1002',
+          'customerName': null,
+          'totalAmount': 30,
+          'amountReceived': 0,
+          'amountDue': 30,
+        },
+      ];
+    final controller = DashboardController(dashboardRepository: repository);
+    await controller.refreshStores();
+    controller.selectedStoreIndex.value = 1;
+
+    await controller.refreshDueInvoices();
+
+    expect(repository.lastDueInvoicesStoreId, 'store-1');
+    expect(controller.dueInvoicesTotal.value, 2);
+    expect(controller.dueInvoicesAmount.value, 55);
+    expect(controller.dueInvoices.map((invoice) => invoice.customerName), [
+      'Karim',
+      'Walk-in customer',
+    ]);
+    expect(controller.dueInvoices.first.amountDue, 25);
+    expect(controller.canLoadMoreDueInvoices, isFalse);
+  });
+
+  test(
+    'a late reply for the previous store does not replace inventory',
+    () async {
+      final repository = _FakeDashboardRepository()
+        ..storeRows = [
+          {'id': 'store-1', 'name': 'Uptown', 'isActive': true},
+          {'id': 'store-2', 'name': 'Downtown', 'isActive': true},
+        ];
+      final controller = DashboardController(dashboardRepository: repository);
+      await controller.refreshStores();
+
+      final slowReply = Completer<void>();
+      repository.inventoryGate = slowReply.future;
+      repository.inventoryRows = [_inventoryRow('old-store-item')];
+      final staleLoad = controller.refreshInventory();
+
+      repository.inventoryGate = null;
+      repository.inventoryRows = [_inventoryRow('new-store-item')];
+      controller.selectedStoreIndex.value = 2;
+      await controller.refreshInventory();
+
+      slowReply.complete();
+      await staleLoad;
+
+      expect(controller.inventoryProducts.map((product) => product.name), [
+        'new-store-item',
+      ]);
+      expect(controller.isInventoryLoading.value, isFalse);
+    },
+  );
 }
+
+Map<String, dynamic> _inventoryRow(String name) => {
+  'id': name,
+  'name': name,
+  'sku': name,
+  'trackStock': true,
+  'inStock': 5,
+  'lowStock': 1,
+  'stockStatus': 'in_stock',
+};
 
 class _FakeDashboardRepository implements DashboardRepository {
   final overviewRanges = <(DateTime, DateTime)>[];
@@ -226,6 +312,9 @@ class _FakeDashboardRepository implements DashboardRepository {
   Map<String, dynamic> summaryTotals = {'netSales': 0};
   String? lastExpirationStatus;
   int? lastExpiringSoonDays;
+  List<Map<String, dynamic>> dueInvoiceRows = [];
+  String? lastDueInvoicesStoreId;
+  Future<void>? inventoryGate;
 
   @override
   Future<ResponseData> fetchOverview(
@@ -319,7 +408,10 @@ class _FakeDashboardRepository implements DashboardRepository {
   }) async {
     lastExpirationStatus = expirationStatus;
     lastExpiringSoonDays = expiringSoonDays;
-    return _success({'items': inventoryRows});
+    final rows = inventoryRows;
+    final gate = inventoryGate;
+    if (gate != null) await gate;
+    return _success({'items': rows});
   }
 
   @override
@@ -367,6 +459,24 @@ class _FakeDashboardRepository implements DashboardRepository {
     'totals': {'netSales': 0},
     'rows': [],
   });
+
+  @override
+  Future<ResponseData> fetchDueInvoices({
+    String? storeId,
+    int limit = 20,
+    int offset = 0,
+  }) async {
+    lastDueInvoicesStoreId = storeId;
+    final amountDue = dueInvoiceRows.fold<num>(
+      0,
+      (sum, row) => sum + (row['amountDue'] as num),
+    );
+    return _success({
+      'total': dueInvoiceRows.length,
+      'totals': {'dueInvoices': dueInvoiceRows.length, 'amountDue': amountDue},
+      'rows': dueInvoiceRows.skip(offset).take(limit).toList(),
+    });
+  }
 
   ResponseData _success(dynamic data) => ResponseData(
     isSuccess: true,

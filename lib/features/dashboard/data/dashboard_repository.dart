@@ -65,6 +65,12 @@ abstract interface class DashboardRepository {
     int limit = 20,
     int offset = 0,
   });
+
+  Future<ResponseData> fetchDueInvoices({
+    String? storeId,
+    int limit = 20,
+    int offset = 0,
+  });
 }
 
 class HttpDashboardRepository implements DashboardRepository {
@@ -198,6 +204,23 @@ class HttpDashboardRepository implements DashboardRepository {
       limit: limit,
       offset: offset,
     ),
+  );
+
+  @override
+  Future<ResponseData> fetchDueInvoices({
+    String? storeId,
+    int limit = 20,
+    int offset = 0,
+  }) => _networkCaller.getRequest(
+    Uri.parse(ApiConstants.dueInvoices)
+        .replace(
+          queryParameters: {
+            'storeId': ?storeId,
+            'limit': '$limit',
+            'offset': '$offset',
+          },
+        )
+        .toString(),
   );
 
   String _dateRangeUrl(

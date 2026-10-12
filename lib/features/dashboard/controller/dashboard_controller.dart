@@ -6,6 +6,7 @@ import 'package:get/get.dart';
 import '../models/dashboard_category_model.dart';
 import '../models/dashboard_employee_model.dart';
 import '../models/dashboard_item_model.dart';
+import '../models/due_invoice_model.dart';
 import '../models/inventory_product_model.dart';
 import '../models/sales_report_models.dart';
 import '../models/store_model.dart';
@@ -22,7 +23,14 @@ enum SalesReportKind { item, category, employee, summary }
 
 class DashboardController extends GetxController {
   final DashboardRepository _dashboardRepository;
-  bool _isFetchingOverview = false;
+
+  // Each load bumps its counter; a reply whose number is no longer current
+  // (the store or period changed meanwhile) is dropped instead of
+  // overwriting newer data.
+  int _overviewRequest = 0;
+  int _inventoryRequest = 0;
+  int _reportRequest = 0;
+  int _dueInvoicesRequest = 0;
 
   DashboardController({DashboardRepository? dashboardRepository})
     : _dashboardRepository = dashboardRepository ?? HttpDashboardRepository();
@@ -33,7 +41,12 @@ class DashboardController extends GetxController {
     [AppColors.gaugePurpleStart, AppColors.gaugePurpleEnd],
   ];
 
-  final selectedNavIndex = 0.obs;
+  static const salesTab = 0;
+  static const inventoryTab = 1;
+  static const debtTab = 2;
+  static const settingsTab = 3;
+
+  final selectedNavIndex = salesTab.obs;
 
   final selectedDate = _startOfCurrentMonth().obs;
   final selectedPeriodStart = _startOfCurrentMonth().obs;
@@ -135,6 +148,16 @@ class DashboardController extends GetxController {
   List<InventoryProductModel> get filteredInventoryProducts =>
       inventoryProducts.toList(growable: false);
 
+  final dueInvoices = <DueInvoiceModel>[].obs;
+  final dueInvoicesTotal = 0.obs;
+  final dueInvoicesAmount = 0.0.obs;
+  final isDueInvoicesLoading = false.obs;
+  final dueInvoicesError = RxnString();
+  static const dueInvoicesPageSize = 20;
+
+  bool get canLoadMoreDueInvoices =>
+      dueInvoices.length < dueInvoicesTotal.value;
+
   final stockNotificationsEnabled = true.obs;
   final settingsSound = 'SIMToolkitPositiveACK';
   String get settingsAccountEmail =>
@@ -153,8 +176,9 @@ class DashboardController extends GetxController {
 
   void selectNavIndex(int index) {
     selectedNavIndex.value = index;
-    if (index == 1) unawaited(refreshInventory());
-    if (index == 2) unawaited(refreshIdentity());
+    if (index == inventoryTab) unawaited(refreshInventory());
+    if (index == debtTab) unawaited(refreshDueInvoices());
+    if (index == settingsTab) unawaited(refreshIdentity());
   }
 
   Future<void> selectStockFilter(int index) async {
@@ -191,6 +215,7 @@ class DashboardController extends GetxController {
       _fetchSalesOverview(),
       refreshInventory(),
       refreshActiveReport(),
+      refreshDueInvoices(),
     ]);
   }
 
@@ -223,6 +248,10 @@ class DashboardController extends GetxController {
     categoryTabs.assignAll(['All Item']);
     categoryIds.assignAll([null]);
     inventoryProducts.clear();
+    dueInvoices.clear();
+    dueInvoicesTotal.value = 0;
+    dueInvoicesAmount.value = 0;
+    dueInvoicesError.value = null;
     selectedStockFilterIndex.value = 0;
     selectedCategoryTabIndex.value = 0;
     inventoryError.value = null;
@@ -295,6 +324,7 @@ class DashboardController extends GetxController {
   }
 
   Future<void> refreshInventory({String? search}) async {
+    final request = ++_inventoryRequest;
     isInventoryLoading.value = true;
     inventoryError.value = null;
     final stockIndex = selectedStockFilterIndex.value;
@@ -316,6 +346,7 @@ class DashboardController extends GetxController {
       expiringSoonDays: stockIndex == 4 ? 30 : null,
       search: search,
     );
+    if (request != _inventoryRequest) return;
     isInventoryLoading.value = false;
     if (!response.isSuccess || response.responseData is! Map) {
       inventoryError.value = response.errorMessage.isEmpty
@@ -394,7 +425,7 @@ class DashboardController extends GetxController {
 
   Future<void> refreshActiveReport({bool loadMore = false}) async {
     final kind = activeReport.value;
-    if (kind == null || isReportLoading.value) return;
+    if (kind == null || (loadMore && isReportLoading.value)) return;
     final currentLength = switch (kind) {
       SalesReportKind.item => reportItems.length,
       SalesReportKind.category => reportCategories.length,
@@ -406,6 +437,7 @@ class DashboardController extends GetxController {
       _clearReportRows();
       reportError.value = null;
     }
+    final request = ++_reportRequest;
     isReportLoading.value = true;
     final response = await switch (kind) {
       SalesReportKind.item => _dashboardRepository.fetchItemSales(
@@ -435,6 +467,7 @@ class DashboardController extends GetxController {
         storeId: selectedStore.id,
       ),
     };
+    if (request != _reportRequest || activeReport.value != kind) return;
     isReportLoading.value = false;
     if (!response.isSuccess || response.responseData is! Map) {
       reportError.value = response.errorMessage.isEmpty
@@ -444,6 +477,38 @@ class DashboardController extends GetxController {
     }
     final data = Map<String, dynamic>.from(response.responseData as Map);
     _applyReport(kind, data, append: loadMore);
+  }
+
+  /// Unpaid credit sales for the selected store, across all dates.
+  Future<void> refreshDueInvoices({bool loadMore = false}) async {
+    if (loadMore && isDueInvoicesLoading.value) return;
+    final request = ++_dueInvoicesRequest;
+    if (!loadMore) dueInvoicesError.value = null;
+    isDueInvoicesLoading.value = true;
+    final response = await _dashboardRepository.fetchDueInvoices(
+      storeId: selectedStore.id,
+      limit: dueInvoicesPageSize,
+      offset: loadMore ? dueInvoices.length : 0,
+    );
+    if (request != _dueInvoicesRequest) return;
+    isDueInvoicesLoading.value = false;
+    if (!response.isSuccess || response.responseData is! Map) {
+      dueInvoicesError.value = response.errorMessage.isEmpty
+          ? 'Unable to load due invoices.'
+          : response.errorMessage;
+      return;
+    }
+    final data = Map<String, dynamic>.from(response.responseData as Map);
+    final totals = data['totals'] is Map
+        ? Map<String, dynamic>.from(data['totals'] as Map)
+        : <String, dynamic>{};
+    final rows = (data['rows'] as List? ?? const [])
+        .whereType<Map>()
+        .map((row) => DueInvoiceModel.fromApi(Map<String, dynamic>.from(row)))
+        .toList();
+    dueInvoicesTotal.value = (data['total'] as num?)?.toInt() ?? rows.length;
+    dueInvoicesAmount.value = (totals['amountDue'] as num?)?.toDouble() ?? 0;
+    loadMore ? dueInvoices.addAll(rows) : dueInvoices.assignAll(rows);
   }
 
   void _applyReport(
@@ -591,56 +656,51 @@ class DashboardController extends GetxController {
       DateTime(date.year, date.month, date.day);
 
   Future<void> _fetchSalesOverview() async {
-    if (_isFetchingOverview) return;
-    _isFetchingOverview = true;
+    final request = ++_overviewRequest;
+    final from = selectedPeriodStart.value;
+    final to = selectedPeriodEnd.value;
+    final periodDays = to.difference(from).inDays + 1;
+    final previousTo = from.subtract(const Duration(days: 1));
+    final previousFrom = previousTo.subtract(Duration(days: periodDays - 1));
+    final storeId = selectedStore.id;
 
-    try {
-      final from = selectedPeriodStart.value;
-      final to = selectedPeriodEnd.value;
-      final periodDays = to.difference(from).inDays + 1;
-      final previousTo = from.subtract(const Duration(days: 1));
-      final previousFrom = previousTo.subtract(Duration(days: periodDays - 1));
-      final storeId = selectedStore.id;
+    final responses = await Future.wait([
+      _dashboardRepository.fetchOverview(from, to, storeId: storeId),
+      _dashboardRepository.fetchOverview(
+        previousFrom,
+        previousTo,
+        storeId: storeId,
+      ),
+      _dashboardRepository.fetchCategorySales(from, to, storeId: storeId),
+      _dashboardRepository.fetchEmployeeSales(from, to, storeId: storeId),
+    ]);
 
-      final responses = await Future.wait([
-        _dashboardRepository.fetchOverview(from, to, storeId: storeId),
-        _dashboardRepository.fetchOverview(
-          previousFrom,
-          previousTo,
-          storeId: storeId,
-        ),
-        _dashboardRepository.fetchCategorySales(from, to, storeId: storeId),
-        _dashboardRepository.fetchEmployeeSales(from, to, storeId: storeId),
-      ]);
+    final current = responses[0];
+    final previous = responses[1];
+    final categorySales = responses[2];
+    final employeeSales = responses[3];
+    if (request != _overviewRequest) return;
 
-      final current = responses[0];
-      final previous = responses[1];
-      final categorySales = responses[2];
-      final employeeSales = responses[3];
+    if (!current.isSuccess) {
+      AppHelperFunctions.showErrorSnackBar(current.errorMessage);
+      return;
+    }
+    _applyOverview(Map<String, dynamic>.from(current.responseData as Map));
 
-      if (!current.isSuccess) {
-        AppHelperFunctions.showErrorSnackBar(current.errorMessage);
-        return;
-      }
-      _applyOverview(Map<String, dynamic>.from(current.responseData as Map));
-
-      if (previous.isSuccess && previous.responseData is Map) {
-        _applyPreviousPeriodChange(
-          Map<String, dynamic>.from(previous.responseData as Map),
-        );
-      }
-      if (categorySales.isSuccess && categorySales.responseData is Map) {
-        _applyCategorySales(
-          Map<String, dynamic>.from(categorySales.responseData as Map),
-        );
-      }
-      if (employeeSales.isSuccess && employeeSales.responseData is Map) {
-        _applyEmployeeSales(
-          Map<String, dynamic>.from(employeeSales.responseData as Map),
-        );
-      }
-    } finally {
-      _isFetchingOverview = false;
+    if (previous.isSuccess && previous.responseData is Map) {
+      _applyPreviousPeriodChange(
+        Map<String, dynamic>.from(previous.responseData as Map),
+      );
+    }
+    if (categorySales.isSuccess && categorySales.responseData is Map) {
+      _applyCategorySales(
+        Map<String, dynamic>.from(categorySales.responseData as Map),
+      );
+    }
+    if (employeeSales.isSuccess && employeeSales.responseData is Map) {
+      _applyEmployeeSales(
+        Map<String, dynamic>.from(employeeSales.responseData as Map),
+      );
     }
   }
 
