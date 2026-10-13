@@ -4,6 +4,9 @@ import 'dart:developer';
 import 'package:http/http.dart';
 
 import '../models/response_data.dart';
+import 'package:get/get.dart' show Get, GetNavigation;
+
+import '../../routes/app_routes.dart';
 import '../services/storage_service.dart';
 
 class NetworkCaller {
@@ -105,16 +108,28 @@ class NetworkCaller {
       );
     }
 
+    final errorMessage = decodedResponse is Map
+        ? (decodedResponse['message'] is List
+              ? (decodedResponse['message'] as List).join(', ')
+              : decodedResponse['message']?.toString() ?? 'An error occurred')
+        : 'An error occurred';
+    // The business's Softverse access ended: back to the login screen,
+    // which shows why on the next sign-in attempt.
+    if (response.statusCode == 403 &&
+        errorMessage.contains('access has ended')) {
+      unawaited(_signOut());
+    }
     return ResponseData(
       isSuccess: false,
       statusCode: response.statusCode,
       responseData: decodedResponse,
-      errorMessage: decodedResponse is Map
-          ? (decodedResponse['message'] is List
-                ? (decodedResponse['message'] as List).join(', ')
-                : decodedResponse['message']?.toString() ?? 'An error occurred')
-          : 'An error occurred',
+      errorMessage: errorMessage,
     );
+  }
+
+  Future<void> _signOut() async {
+    await StorageService.logoutUser();
+    Get.offAllNamed(AppRoute.getLoginScreen());
   }
 
   ResponseData _handleError(dynamic error) {
