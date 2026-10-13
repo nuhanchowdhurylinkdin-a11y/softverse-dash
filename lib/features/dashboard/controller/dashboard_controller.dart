@@ -17,6 +17,7 @@ import '../../../core/services/storage_service.dart';
 import '../../../core/utils/constants/api_constants.dart';
 import '../../../core/utils/constants/colors.dart';
 import '../../../core/utils/helpers/app_helper.dart';
+import '../../../core/utils/helpers/currency.dart';
 import '../../../routes/app_routes.dart';
 
 enum SalesReportKind { item, category, employee, summary }
@@ -106,16 +107,9 @@ class DashboardController extends GetxController {
   final currencyCode = ''.obs;
   static const reportPageSize = 20;
 
-  String get currencySymbol =>
-      switch (currencyCode.value.trim().toUpperCase()) {
-        'USD' || 'DOLLAR' || 'US DOLLAR' => r'$',
-        'EUR' || 'EURO' => '€',
-        'GBP' || 'POUND' || 'POUND STERLING' => '£',
-        'BDT' || 'TAKA' || 'BANGLADESHI TAKA' => '৳',
-        'INR' || 'RUPEE' || 'INDIAN RUPEE' => '₹',
-        final code when code.isNotEmpty => '$code ',
-        _ => '',
-      };
+  String get currencySymbol => currencyDisplaySymbol(
+    currencyCode.value.isEmpty ? null : currencyCode.value,
+  );
 
   String money(num value, {int decimals = 2}) =>
       '$currencySymbol${value.toStringAsFixed(decimals)}';
