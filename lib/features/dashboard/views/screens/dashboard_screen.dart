@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 
 import '../../../../core/common/widgets/app_network_image.dart';
 import '../../../../core/common/widgets/gradient_list_card.dart';
+import '../../../../core/utils/constants/colors.dart';
 import '../../../../routes/app_routes.dart';
 import '../../controller/dashboard_controller.dart';
 import '../../widgets/dashboard_app_bar.dart';
@@ -162,6 +163,41 @@ class _SalesTabView extends StatelessWidget {
                     ),
                 ],
               ),
+            ),
+            Obx(
+              () => controller.taxes.isEmpty
+                  ? const SizedBox.shrink()
+                  : Padding(
+                      padding: EdgeInsets.only(top: sectionGap.h),
+                      child: DashboardListSection(
+                        title:
+                            'Taxes collected  ${controller.currencySymbol}${decimalAmount.format(controller.taxesCollected.value)}',
+                        cards: [
+                          for (final tax in controller.taxes)
+                            GradientListCard(
+                              verticalPadding: 16,
+                              leading: Container(
+                                decoration: const BoxDecoration(
+                                  gradient: LinearGradient(
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                    colors: [
+                                      AppColors.gaugePurpleStart,
+                                      AppColors.gaugePurpleEnd,
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              title: tax.name,
+                              subtitle:
+                                  '${tax.ratePercent.toStringAsFixed(tax.ratePercent % 1 == 0 ? 0 : 2)}% · '
+                                  '${tax.includedInPrice ? 'included in price' : 'added to price'}',
+                              trailingText:
+                                  '${controller.currencySymbol}${decimalAmount.format(tax.amountCollected)}',
+                            ),
+                        ],
+                      ),
+                    ),
             ),
           ],
         ),

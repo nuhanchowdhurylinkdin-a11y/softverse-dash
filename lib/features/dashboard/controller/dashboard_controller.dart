@@ -6,6 +6,7 @@ import 'package:get/get.dart';
 import '../models/dashboard_category_model.dart';
 import '../models/dashboard_employee_model.dart';
 import '../models/dashboard_item_model.dart';
+import '../models/dashboard_tax_model.dart';
 import '../models/due_invoice_model.dart';
 import '../models/inventory_product_model.dart';
 import '../models/sales_report_models.dart';
@@ -120,6 +121,10 @@ class DashboardController extends GetxController {
   final items = <DashboardItemModel>[].obs;
   final categories = <DashboardCategoryModel>[].obs;
   final employees = <DashboardEmployeeModel>[].obs;
+
+  /// Taxes collected in the selected period (added and included in price).
+  final taxes = <DashboardTaxModel>[].obs;
+  final taxesCollected = 0.0.obs;
 
   final stockFilters = const [
     'All Category',
@@ -238,6 +243,8 @@ class DashboardController extends GetxController {
     items.clear();
     categories.clear();
     employees.clear();
+    taxes.clear();
+    taxesCollected.value = 0;
     stores.assignAll([const StoreModel(name: 'All stores')]);
     categoryTabs.assignAll(['All Item']);
     categoryIds.assignAll([null]);
@@ -667,12 +674,14 @@ class DashboardController extends GetxController {
       ),
       _dashboardRepository.fetchCategorySales(from, to, storeId: storeId),
       _dashboardRepository.fetchEmployeeSales(from, to, storeId: storeId),
+      _dashboardRepository.fetchTaxes(from, to, storeId: storeId),
     ]);
 
     final current = responses[0];
     final previous = responses[1];
     final categorySales = responses[2];
     final employeeSales = responses[3];
+    final taxReport = responses[4];
     if (request != _overviewRequest) return;
 
     if (!current.isSuccess) {
@@ -695,6 +704,9 @@ class DashboardController extends GetxController {
       _applyEmployeeSales(
         Map<String, dynamic>.from(employeeSales.responseData as Map),
       );
+    }
+    if (taxReport.isSuccess && taxReport.responseData is Map) {
+      _applyTaxes(Map<String, dynamic>.from(taxReport.responseData as Map));
     }
   }
 
@@ -772,6 +784,17 @@ class DashboardController extends GetxController {
         avatarUrl: ApiConstants.resolveAssetUrl(row['avatarUrl']?.toString()),
       );
     }).toList();
+  }
+
+  void _applyTaxes(Map<String, dynamic> data) {
+    final totals = data['totals'] is Map
+        ? Map<String, dynamic>.from(data['totals'] as Map)
+        : <String, dynamic>{};
+    taxes.value = (data['rows'] as List? ?? const [])
+        .whereType<Map>()
+        .map((row) => DashboardTaxModel.fromApi(Map<String, dynamic>.from(row)))
+        .toList();
+    taxesCollected.value = (totals['amountTaxed'] as num?)?.toDouble() ?? 0;
   }
 
   double _percentChange(double previous, double current) {

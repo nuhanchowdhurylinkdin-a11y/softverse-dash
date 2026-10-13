@@ -54,6 +54,9 @@ void main() {
     expect(controller.items.single.name, 'Chicken Fry');
     expect(controller.categories.single.name, 'Beverages');
     expect(controller.employees.single.name, 'Owner');
+    expect(controller.taxesCollected.value, 21.5);
+    expect(controller.taxes.map((tax) => tax.name), ['VAT', 'City tax']);
+    expect(controller.taxes.first.includedInPrice, isTrue);
   });
 
   test('clears all account-owned in-memory state', () {
@@ -477,6 +480,29 @@ class _FakeDashboardRepository implements DashboardRepository {
       'rows': dueInvoiceRows.skip(offset).take(limit).toList(),
     });
   }
+
+  @override
+  Future<ResponseData> fetchTaxes(
+    DateTime from,
+    DateTime to, {
+    String? storeId,
+  }) async => _success({
+    'totals': {'amountTaxed': 21.5},
+    'rows': [
+      {
+        'taxName': 'VAT',
+        'taxRatePercent': 15,
+        'type': 'included_in_price',
+        'amountTaxed': 15,
+      },
+      {
+        'taxName': 'City tax',
+        'taxRatePercent': 2.5,
+        'type': 'added_at_checkout',
+        'amountTaxed': 6.5,
+      },
+    ],
+  });
 
   ResponseData _success(dynamic data) => ResponseData(
     isSuccess: true,
