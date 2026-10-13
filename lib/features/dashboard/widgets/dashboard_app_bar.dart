@@ -7,7 +7,8 @@ import 'dashboard_date_bar.dart';
 import 'store_switcher.dart';
 
 /// The dashboard's app bar and title. The reporting date range is shown only
-/// for Sales; Inventory is a current snapshot and Settings is not date-based.
+/// for Sales; Inventory is a current snapshot, Debt lists everything still
+/// owed and Settings is not date-based.
 class DashboardAppBar extends StatelessWidget implements PreferredSizeWidget {
   final DashboardController controller;
   final int selectedIndex;
@@ -18,9 +19,9 @@ class DashboardAppBar extends StatelessWidget implements PreferredSizeWidget {
     required this.selectedIndex,
   });
 
-  static const _titles = ['Sales Overview', 'Inventory', 'Settings'];
+  static const _titles = ['Sales Overview', 'Inventory', 'Debt', 'Settings'];
 
-  bool get _showDateBar => selectedIndex == 0;
+  bool get _showDateBar => selectedIndex == DashboardController.salesTab;
 
   @override
   Size get preferredSize => _buildAppBar().preferredSize;

@@ -65,6 +65,18 @@ abstract interface class DashboardRepository {
     int limit = 20,
     int offset = 0,
   });
+
+  Future<ResponseData> fetchDueInvoices({
+    String? storeId,
+    int limit = 20,
+    int offset = 0,
+  });
+
+  Future<ResponseData> fetchTaxes(
+    DateTime from,
+    DateTime to, {
+    String? storeId,
+  });
 }
 
 class HttpDashboardRepository implements DashboardRepository {
@@ -197,6 +209,38 @@ class HttpDashboardRepository implements DashboardRepository {
       storeId: storeId,
       limit: limit,
       offset: offset,
+    ),
+  );
+
+  @override
+  Future<ResponseData> fetchDueInvoices({
+    String? storeId,
+    int limit = 20,
+    int offset = 0,
+  }) => _networkCaller.getRequest(
+    Uri.parse(ApiConstants.dueInvoices)
+        .replace(
+          queryParameters: {
+            'storeId': ?storeId,
+            'limit': '$limit',
+            'offset': '$offset',
+          },
+        )
+        .toString(),
+  );
+
+  @override
+  Future<ResponseData> fetchTaxes(
+    DateTime from,
+    DateTime to, {
+    String? storeId,
+  }) => _networkCaller.getRequest(
+    _reportUrl(
+      ApiConstants.taxesReport,
+      from,
+      to,
+      storeId: storeId,
+      limit: 100,
     ),
   );
 

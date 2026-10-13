@@ -15,6 +15,7 @@ class DashboardBottomNav extends StatelessWidget {
   static const _tabs = [
     (icon: Iconsax.chart_2, label: 'Sales'),
     (icon: Iconsax.hierarchy_square, label: 'Inventory'),
+    (icon: Iconsax.money_time, label: 'Debt'),
     (icon: Iconsax.setting_2, label: 'Settings'),
   ];
 

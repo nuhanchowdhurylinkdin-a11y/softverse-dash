@@ -6,11 +6,13 @@ import 'package:intl/intl.dart';
 
 import '../../../../core/common/widgets/app_network_image.dart';
 import '../../../../core/common/widgets/gradient_list_card.dart';
+import '../../../../core/utils/constants/colors.dart';
 import '../../../../routes/app_routes.dart';
 import '../../controller/dashboard_controller.dart';
 import '../../widgets/dashboard_app_bar.dart';
 import '../../widgets/dashboard_bottom_nav.dart';
 import '../../widgets/dashboard_list_section.dart';
+import '../../widgets/debt_tab_view.dart';
 import '../../widgets/inventory_tab_view.dart';
 import '../../widgets/sales_bar_chart.dart';
 import '../../widgets/sales_summary_section.dart';
@@ -36,8 +38,13 @@ class DashboardScreen extends GetView<DashboardController> {
             selectedIndex: navIndex,
           ),
           body: switch (navIndex) {
-            1 => InventoryTabView(controller: controller),
-            2 => SettingsTabView(controller: controller),
+            DashboardController.inventoryTab => InventoryTabView(
+              controller: controller,
+            ),
+            DashboardController.debtTab => DebtTabView(controller: controller),
+            DashboardController.settingsTab => SettingsTabView(
+              controller: controller,
+            ),
             _ => _SalesTabView(
               controller: controller,
               wholeAmount: _wholeAmount,
@@ -156,6 +163,41 @@ class _SalesTabView extends StatelessWidget {
                     ),
                 ],
               ),
+            ),
+            Obx(
+              () => controller.taxes.isEmpty
+                  ? const SizedBox.shrink()
+                  : Padding(
+                      padding: EdgeInsets.only(top: sectionGap.h),
+                      child: DashboardListSection(
+                        title:
+                            'Taxes collected  ${controller.currencySymbol}${decimalAmount.format(controller.taxesCollected.value)}',
+                        cards: [
+                          for (final tax in controller.taxes)
+                            GradientListCard(
+                              verticalPadding: 16,
+                              leading: Container(
+                                decoration: const BoxDecoration(
+                                  gradient: LinearGradient(
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                    colors: [
+                                      AppColors.gaugePurpleStart,
+                                      AppColors.gaugePurpleEnd,
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              title: tax.name,
+                              subtitle:
+                                  '${tax.ratePercent.toStringAsFixed(tax.ratePercent % 1 == 0 ? 0 : 2)}% · '
+                                  '${tax.includedInPrice ? 'included in price' : 'added to price'}',
+                              trailingText:
+                                  '${controller.currencySymbol}${decimalAmount.format(tax.amountCollected)}',
+                            ),
+                        ],
+                      ),
+                    ),
             ),
           ],
         ),

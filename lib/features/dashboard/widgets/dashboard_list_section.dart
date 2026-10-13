@@ -32,17 +32,18 @@ class DashboardListSection extends StatelessWidget {
                 color: AppColors.dashboardTextDark,
               ),
             ),
-            GestureDetector(
-              onTap: onSeeAllTap,
-              child: Text(
-                'See all',
-                style: getTextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                  color: AppColors.dashboardAccentBlue,
+            if (onSeeAllTap != null)
+              GestureDetector(
+                onTap: onSeeAllTap,
+                child: Text(
+                  'See all',
+                  style: getTextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.dashboardAccentBlue,
+                  ),
                 ),
               ),
-            ),
           ],
         ),
         SizedBox(height: 11.h),
